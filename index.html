@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Тетрис для смартфона</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* Стили остаются без изменений */
         * {
             margin: 0;
             padding: 0;
@@ -234,6 +236,15 @@
             background: #45a049;
         }
 
+        .telegram-info {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+            text-align: center;
+            font-size: 14px;
+        }
+
         @media (max-width: 400px) {
             .controls {
                 gap: 5px;
@@ -262,6 +273,11 @@
 </head>
 <body class="no-select">
     <div class="game-container">
+        <!-- Добавляем информацию о Telegram -->
+        <div class="telegram-info" id="telegram-info" style="display: none;">
+            ✅ Запущено в Telegram • Результаты будут сохранены
+        </div>
+
         <div class="header">
             <h1>ТЕТРИС</h1>
             <div class="score-board">
@@ -307,7 +323,8 @@
             
             <div id="name-input-section">
                 <input type="text" id="player-name" class="name-input" placeholder="Введите ваше имя" maxlength="20">
-                <button class="submit-btn" id="submit-score">📤 Отправить результат</button>
+                <button class="submit-btn" id="submit-score">📤 Отправить результат в рекорды</button>
+                <div id="telegram-status" style="margin-top: 10px; font-size: 14px; color: #ccc;"></div>
             </div>
             
             <div style="margin-top: 15px;">
@@ -317,6 +334,46 @@
     </div>
 
     <script>
+        // ===== ТЕЛЕГРАМ ИНИЦИАЛИЗАЦИЯ =====
+        let isTelegramWebApp = false;
+        let tg = null;
+
+        // Проверяем, запущено ли в Telegram WebApp
+        function initTelegramWebApp() {
+            try {
+                // Проверяем наличие Telegram WebApp API
+                if (window.Telegram && window.Telegram.WebApp) {
+                    tg = window.Telegram.WebApp;
+                    isTelegramWebApp = true;
+                    
+                    console.log("✅ Запущено в Telegram WebApp");
+                    console.log("User ID:", tg.initDataUnsafe?.user?.id);
+                    console.log("Username:", tg.initDataUnsafe?.user?.username);
+                    
+                    // Показываем информацию о Telegram
+                    document.getElementById('telegram-info').style.display = 'block';
+                    document.getElementById('telegram-status').innerHTML = '✅ Результаты будут отправлены в рекорды';
+                    
+                    // Расширяем WebApp на весь экран
+                    tg.expand();
+                    
+                    // Меняем текст кнопки
+                    document.getElementById('submit-score').innerHTML = '📤 Отправить результат в рекорды';
+                    
+                    return true;
+                } else {
+                    console.log("❌ Не в Telegram WebApp");
+                    document.getElementById('telegram-status').innerHTML = '❌ Запустите через Telegram бота для сохранения рекордов';
+                    return false;
+                }
+            } catch (error) {
+                console.log("❌ Ошибка инициализации Telegram:", error);
+                document.getElementById('telegram-status').innerHTML = '❌ Ошибка подключения к Telegram';
+                return false;
+            }
+        }
+
+        // ===== ОСНОВНОЙ КОД ТЕТРИСА =====
         // Константы игры
         const COLS = 10;
         const ROWS = 20;
@@ -614,6 +671,13 @@
                 finalScore = score;
                 finalScoreElement.textContent = finalScore;
                 gameOverElement.style.display = 'flex';
+                
+                // Предзаполняем имя если есть данные пользователя Telegram
+                if (isTelegramWebApp && tg.initDataUnsafe?.user?.first_name) {
+                    const firstName = tg.initDataUnsafe.user.first_name;
+                    const username = tg.initDataUnsafe.user.username;
+                    playerNameInput.value = username ? `@${username}` : firstName;
+                }
             }
             
             drawNextPiece();
@@ -664,35 +728,47 @@
             requestAnimationFrame(update);
         }
 
-        // Отправка результата в Telegram
+        // ОБНОВЛЕННАЯ ФУНКЦИЯ ОТПРАВКИ РЕЗУЛЬТАТА
         async function submitScoreToTelegram(playerName, score) {
             try {
-                // Проверяем, запущено ли в Telegram WebApp
-                if (window.Telegram && window.Telegram.WebApp) {
+                console.log("Попытка отправки результата:", { playerName, score, isTelegramWebApp });
+                
+                if (isTelegramWebApp && tg) {
                     const data = {
                         name: playerName,
                         score: score,
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
+                        platform: 'telegram_webapp'
                     };
                     
                     console.log("Отправка данных в Telegram:", data);
                     
                     // Отправляем данные в бот
-                    window.Telegram.WebApp.sendData(JSON.stringify(data));
+                    tg.sendData(JSON.stringify(data));
                     
                     // Показываем сообщение об успехе
-                    alert(`✅ Результат отправлен!\n${playerName}: ${score} очков`);
+                    alert(`✅ Результат отправлен!\n${playerName}: ${score} очков\n\nРезультат будет сохранен в таблице рекордов!`);
+                    
+                    // Закрываем WebApp через 2 секунды
+                    setTimeout(() => {
+                        tg.close();
+                    }, 2000);
                     
                 } else {
                     // Если не в Telegram, показываем сообщение
                     console.log("Не в Telegram WebApp, данные:", {name: playerName, score: score});
-                    alert(`🎉 ${playerName}, ваш результат: ${score} очков!\n\nЗапустите игру через Telegram бота для участия в рекордах!`);
+                    alert(`🎉 ${playerName}, ваш результат: ${score} очков!\n\nДля участия в рекордах запустите игру через Telegram бота:\n@${getBotUsername()}`);
                 }
                 
             } catch (error) {
                 console.error('Ошибка отправки:', error);
                 alert('❌ Ошибка отправки результата. Попробуйте еще раз.');
             }
+        }
+
+        // Функция для получения username бота (замените на ваш)
+        function getBotUsername() {
+            return "your_bot_username"; // Замените на username вашего бота
         }
 
         // Обработка нажатий кнопок
@@ -750,6 +826,11 @@
                 return;
             }
             
+            if (playerName.length > 20) {
+                alert('Имя не должно превышать 20 символов!');
+                return;
+            }
+            
             submitScoreToTelegram(playerName, finalScore);
         });
 
@@ -801,6 +882,10 @@
 
         // Запуск игры при загрузке
         window.addEventListener('load', () => {
+            // Инициализируем Telegram WebApp
+            initTelegramWebApp();
+            
+            // Настраиваем размер и запускаем игру
             setupCanvasSize();
             resetGame();
         });
@@ -810,5 +895,3 @@
     </script>
 </body>
 </html>
-
-
