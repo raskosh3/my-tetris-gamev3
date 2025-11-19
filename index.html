@@ -775,58 +775,64 @@
 
         // ОБНОВЛЕННАЯ ФУНКЦИЯ ОТПРАВКИ РЕЗУЛЬТАТА
         async function submitScoreToTelegram(playerName, score) {
-            try {
-                console.log("Попытка отправки результата:", { playerName, score, isTelegramWebApp });
+    try {
+        console.log("Попытка отправки результата:", { playerName, score, isTelegramWebApp });
+        
+        if (isTelegramWebApp && tg) {
+            const data = {
+                action: 'save_score',
+                name: playerName,
+                score: score,
+                timestamp: new Date().toISOString(),
+                user_id: tg.initDataUnsafe?.user?.id,
+                platform: 'telegram_webapp'
+            };
+            
+            console.log("Отправка данных в Telegram:", data);
+            
+            // Проверяем, готов ли WebApp к отправке данных
+            if (tg.isReady) {
+                tg.sendData(JSON.stringify(data));
+                console.log("✅ Данные отправлены через sendData");
                 
-                if (isTelegramWebApp && tg) {
-                    const data = {
-                        action: 'save_score',
-                        name: playerName,
-                        score: score,
-                        timestamp: new Date().toISOString(),
-                        user_id: tg.initDataUnsafe?.user?.id,
-                        platform: 'telegram_webapp'
-                    };
-                    
-                    console.log("Отправка данных в Telegram:", data);
-                    
-                    // Отправляем данные в бот
-                    tg.sendData(JSON.stringify(data));
-                    
-                    // Показываем сообщение об успехе
-                    alert(`✅ Результат отправлен!\n${playerName}: ${score} очков\n\nРезультат будет сохранен в таблице рекордов!`);
-                    
-                    // Закрываем WebApp через 2 секунды
-                    setTimeout(() => {
-                        if (tg && tg.close) {
-                            tg.close();
-                        }
-                    }, 2000);
-                    
-                } else {
-                    // Если не в Telegram, показываем секцию для копирования
-                    const resultString = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\nИгрок: ${playerName}\nОчки: ${score}\nОтправьте это сообщение боту для сохранения результата`;
-                    
-                    resultText.textContent = resultString;
-                    copySection.style.display = 'block';
-                    
-                    // Прокручиваем к секции копирования
-                    copySection.scrollIntoView({ behavior: 'smooth' });
-                    
-                    alert(`🎉 ${playerName}, ваш результат: ${score} очков!\n\nСкопируйте результат ниже и отправьте боту.`);
-                }
+                // Показываем сообщение об успехе
+                alert(`✅ Результат отправлен!\n${playerName}: ${score} очков`);
                 
-            } catch (error) {
-                console.error('Ошибка отправки:', error);
-                // Показываем секцию для копирования в случае ошибки
-                const resultString = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\nИгрок: ${playerName}\nОчки: ${score}\nОтправьте это сообщение боту для сохранения результата`;
-                
-                resultText.textContent = resultString;
-                copySection.style.display = 'block';
-                copySection.scrollIntoView({ behavior: 'smooth' });
-                
-                alert('❌ Ошибка отправки результата. Скопируйте результат ниже и отправьте боту вручную.');
+                // Закрываем WebApp через 2 секунды
+                setTimeout(() => {
+                    if (tg && tg.close) {
+                        tg.close();
+                    }
+                }, 2000);
+            } else {
+                // Если WebApp не готов, используем альтернативный метод
+                console.log("WebApp не готов, используем альтернативный метод");
+                showCopySection(playerName, score);
             }
+            
+        } else {
+            // Если не в Telegram, показываем секцию для копирования
+            showCopySection(playerName, score);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка отправки:', error);
+        showCopySection(playerName, score);
+    }
+}
+
+// Новая функция для показа секции копирования
+function showCopySection(playerName, score) {
+    const resultString = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\nИгрок: ${playerName}\nОчки: ${score}\nОтправьте это сообщение боту для сохранения результата`;
+    
+    resultText.textContent = resultString;
+    copySection.style.display = 'block';
+    
+    // Прокручиваем к секции копирования
+    copySection.scrollIntoView({ behavior: 'smooth' });
+    
+    alert(`🎉 ${playerName}, ваш результат: ${score} очков!\n\nСкопируйте результат ниже и отправьте боту.`);
+}
         }
 
         // Копирование результата в буфер обмена
@@ -956,3 +962,4 @@
     </script>
 </body>
 </html>
+
