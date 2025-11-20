@@ -920,13 +920,13 @@ function showCopySection(playerName, score) {
             resetGame();
         });
 
-        // === ФИНАЛЬНЫЙ РАБОЧИЙ БЛОК GAME OVER С MAINBUTTON (НОЯБРЬ 2025) ===
-        if (gameOver) {
+       // === ФИНАЛЬНЫЙ РАБОЧИЙ GAME OVER С MAINBUTTON (2025) ===
+        function showGameOver() {
             finalScoreElement.textContent = finalScore;
             gameOverElement.style.display = 'flex';
             copySection.style.display = 'none';
 
-            // Автозаполнение имени из Telegram
+            // Автозаполнение имени
             let playerName = "Аноним";
             if (tg && tg.initDataUnsafe?.user) {
                 const u = tg.initDataUnsafe.user;
@@ -934,58 +934,58 @@ function showCopySection(playerName, score) {
             }
             playerNameInput.value = playerName;
 
-            // Скрываем старую зелёную кнопку — она больше не нужна
+            // Скрываем старую кнопку
             submitScoreBtn.style.display = 'none';
 
-            // ВКЛЮЧАЕМ СИНЮЮ ГЛАВНУЮ КНОПКУ TELEGRAM
-            if (tg) {
-                tg.expand();
-
-                const sendScore = () => {
-                    const currentName = playerNameInput.value.trim() || "Аноним";
-                    if (currentName.length > 20) {
-                        playerNameInput.value = currentName.substring(0, 20);
-                    }
-
-                    const data = JSON.stringify({
-                        action: "save_score",
-                        name: currentName,
-                        score: finalScore,
-                        user_id: tg.initDataUnsafe?.user?.id || null,
-                        username: tg.initDataUnsafe?.user?.username || null
-                    });
-
-                    tg.sendData(data);
-                };
-
-                tg.MainButton.text = `Отправить ${finalScore} очков в рекорды 🏆`;
-                tg.MainButton.color = "#31b545";
-                tg.MainButton.textColor = "#ffffff";
-                tg.MainButton.show();
-                tg.MainButton.enable();
-
-                // Убираем старые обработчики и вешаем новый
-                tg.MainButton.offClick();
-                tg.MainButton.onClick(() => {
-                    sendScore();
-                    tg.MainButton.setText("Отправляется...");
-                    tg.MainButton.disable();
-                });
-
-                // Обновляем текст кнопки при изменении имени
-                playerNameInput.oninput = () => {
-                    const name = playerNameInput.value.trim() || "Аноним";
-                    const shortName = name.substring(0, 20);
-                    tg.MainButton.text = `Отправить ${finalScore} очков в рекорды 🏆`;
-                };
-            } else {
-                // Если не в Telegram — показываем копирование
-                setTimeout(() => showCopySection(playerName, finalScore), 500);
+            // Если не в Telegram — показываем копирование
+            if (!tg) {
+                showCopySection(playerName, finalScore);
+                return;
             }
 
+            tg.expand();
+
+            const sendScore = () => {
+                const name = (playerNameInput.value || "Аноним").trim().substring(0, 20);
+                const data = JSON.stringify({
+                    action: "save_score",
+                    name: name,
+                    score: finalScore,
+                    user_id: tg.initDataUnsafe?.user?.id || null,
+                    username: tg.initDataUnsafe?.user?.username || null
+                });
+
+                tg.sendData(data);
+            };
+
+            // Настраиваем главную кнопку
+            tg.MainButton.text = `Отправить ${finalScore} очков 🏆`;
+            tg.MainButton.color = "#31b545";
+            tg.MainButton.textColor = "#ffffff";
+            tg.MainButton.show();
+            tg.MainButton.enable();
+
+            // Убираем старые обработчики
+            tg.MainButton.offClick();
+            tg.MainButton.onClick(() => {
+                sendScore();
+                tg.MainButton.setText("Отправляется...");
+                tg.MainButton.disable();
+            });
+
+            // Обновляем текст при вводе имени
+            playerNameInput.oninput = () => {
+                const name = playerNameInput.value.trim() || "Аноним";
+                tg.MainButton.text = `Отправить ${finalScore} очков 🏆`;
+            };
+        }
+
+        // Проверяем Game Over
+        if (gameOver) {
+            showGameOver();
             return; // останавливаем игру
         }
-        // === КОНЕЦ БЛОКА GAME OVER ===
+        // === КОНЕЦ ФИНАЛЬНОГО БЛОКА ==
 
         // Сброс игры
         function resetGame() {
@@ -1037,6 +1037,7 @@ function showCopySection(playerName, score) {
     </script>
 </body>
 </html>
+
 
 
 
