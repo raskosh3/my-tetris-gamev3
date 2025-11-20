@@ -4,345 +4,228 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="telegram:webapp" content="true">
-    <title>Тетрис для смартфона</title>
+    <title>Тетрис — Классика</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: manipulation; }
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 10px;
-            color: white;
-        }
-        .game-container { width: 100%; max-width: 500px; padding: 10px; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .score-board { display: flex; gap: 15px; }
-        .score-item { text-align: center; }
-        .score-value {
-            font-size: 18px; font-weight: bold;
-            background: rgba(255,255,255,0.2);
-            padding: 5px 10px; border-radius: 10px; margin-top: 5px;
-        }
-        .game-area { display: flex; gap: 10px; margin-bottom: 10px; }
-        canvas { background: #111; border: 3px solid #333; border-radius: 10px; }
-        #tetris { flex: 1; }
-        .side-panel { width: 100px; display: flex; flex-direction: column; gap: 10px; }
-        .next-piece { background: rgba(0,0,0,0.3); border-radius: 10px; padding: 10px; text-align: center; }
-        #next-piece { background: #111; border: 2px solid #333; border-radius: 5px; margin-top: 5px; }
-        .controls {
-            display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr;
-            gap: 8px; margin-top: 10px; padding: 0 10px;
-        }
-        .control-btn {
-            background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 15px; color: white; font-size: 24px; height: 60px;
-            display: flex; align-items: center; justify-content: center;
-            user-select: none; transition: all 0.1s;
-        }
-        .control-btn:active { background: rgba(255,255,255,0.4); transform: scale(0.95); }
-        .rotate-btn { grid-column: 2; grid-row: 1; }
-        .left-btn   { grid-column: 1; grid-row: 2; }
-        .down-btn   { grid-column: 2; grid-row: 2; }
-        .right-btn  { grid-column: 3; grid-row: 2; }
-        .drop-btn {
-            grid-column: 1 / span 3; grid-row: 3;
-            background: rgba(255, 100, 100, 0.3); font-size: 16px;
-        }
-        .game-over {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); color: white; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 100; padding: 20px;
-        }
-        .game-over-content {
-            background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px;
-            text-align: center; backdrop-filter: blur(10px); width: 100%; max-width: 400px;
-        }
-        .name-input {
-            width: 100%; padding: 15px; font-size: 18px; border: none; border-radius: 10px;
-            margin: 15px 0; text-align: center; background: rgba(255,255,255,0.9); color: #000;
-        }
+        * { margin:0; padding:0; box-sizing:border-box; touch-action:manipulation; }
+        body { font-family:Arial; background:#000; color:white; display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:10px; }
+        .container { max-width:500px; width:100%; }
+        .score { display:flex; justify-content:space-around; background:rgba(255,255,255,0.1); padding:10px; border-radius:15px; margin-bottom:10px; }
+        canvas { background:#111; border:4px solid #333; border-radius:15px; image-rendering:pixelated; }
+        #tetris { width:100%; height:auto; }
+        .next { text-align:center; margin:10px 0; background:rgba(255,255,255,0.1); padding:10px; border-radius:15px; }
+        .controls { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:15px; }
+        .btn { background:rgba(255,255,255,0.2); border:3px solid rgba(255,255,255,0.4); border-radius:15px; height:65px; font-size:28px; display:flex; align-items:center; justify-content:center; }
+        .btn:active { background:rgba(255,255,255,0.5); transform:scale(0.95); }
+        .drop-btn { background:#ff4444 !important; font-size:18px; }
+        .game-over { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:999; justify-content:center; align-items:center; padding:20px; }
+        .go-box { background:rgba(255,255,255,0.15); padding:30px; border-radius:20px; text-align:center; max-width:400px; width:100%; backdrop-filter:blur(10px); }
+        .name-input { width:100%; padding:15px; font-size:18px; margin:15px 0; border-radius:12px; border:none; text-align:center; }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="header">
-            <div class="score-board">
-                <div class="score-item">
-                    <div>Очки</div>
-                    <div class="score-value" id="score">0</div>
-                </div>
-                <div class="score-item">
-                    <div>Уровень</div>
-                    <div class="score-value" id="level">1</div>
-                </div>
-                <div class="score-item">
-                    <div>Линии</div>
-                    <div class="score-value" id="lines">0</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="game-area">
-            <canvas id="tetris"></canvas>
-            <div class="side-panel">
-                <div class="next-piece">
-                    <div>Следующая</div>
-                    <canvas id="next-piece" width="80" height="80"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="controls">
-            <div class="control-btn rotate-btn">↻</div>
-            <div class="control-btn left-btn">←</div>
-            <div class="control-btn down-btn">↓</div>
-            <div class="control-btn right-btn">→</div>
-            <div class="control-btn drop-btn">БЫСТРО ВНИЗ</div>
-        </div>
+<div class="container">
+    <div class="score">
+        <div><div>Очки</div><b id="score">0</b></div>
+        <div><div>Уровень</div><b id="level">1</b></div>
+        <div><div>Линии</div><b id="lines">0</b></div>
     </div>
-
-    <div class="game-over" id="game-over">
-        <div class="game-over-content">
-            <h2>Игра окончена!</h2>
-            <div class="final-score">Ваши очки: <span id="final-score">0</span></div>
-            <input type="text" class="name-input" id="player-name" placeholder="Введите имя" maxlength="20">
-        </div>
+    <canvas id="tetris"></canvas>
+    <div class="next">Следующая:<br><canvas id="next" width="100" height="100"></canvas></div>
+    <div class="controls">
+        <div class="btn" id="left">←</div>
+        <div class="btn" id="rotate">↻</div>
+        <div class="btn" id="right">→</div>
+        <div class="btn" id="down">↓</div>
+        <div class="btn drop-btn" colspan="2" id="hard-drop">БЫСТРО ВНИЗ</div>
     </div>
+</div>
 
-    <script>
-        const tg = window.Telegram?.WebApp;
-        if (tg) { tg.ready(); tg.expand(); }
+<div class="game-over" id="game-over">
+    <div class="go-box">
+        <h2>Игра окончена!</h2>
+        <h3>Очки: <span id="final-score">0</span></h3>
+        <input type="text" class="name-input" id="name" placeholder="Твоё имя" maxlength="20">
+        <div style="margin-top:20px; font-size:14px; opacity:0.8;">Нажми зелёную кнопку ↓</div>
+    </div>
+</div>
 
-        const BOT_TOKEN = "7774913864:AAFLyQP6kuVmPcGYKgHOE9YpWJ2G7tGq3JU";
-        const USER_ID = tg?.initDataUnsafe?.user?.id || "unknown";
+<script>
+    const tg = window.Telegram?.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
 
-        // === ФИГУРЫ (обязательно ДО PIECES!) ===
-        const I = [[[1,1,1,1]], [[1],[1],[1],[1]]];
-        const J = [[[1,0,0],[1,1,1]], [[1,1],[1,0],[1,0]], [[1,1,1],[0,0,1]], [[0,1],[0,1],[1,1]]];
-        const L = [[[0,0,1],[1,1,1]], [[1,0],[1,0],[1,1]], [[1,1,1],[1,0,0]], [[1,1],[0,1],[0,1]]];
-        const O = [[[1,1],[1,1]]];
-        const S = [[[0,1,1],[1,1,0]], [[1,0],[1,1],[0,1]]];
-        const T = [[[0,1,0],[1,1,1]], [[1,0],[1,1],[1,0]], [[1,1,1],[0,1,0]], [[0,1],[1,1],[0,1]]];
-        const Z = [[[1,1,0],[0,1,1]], [[0,1],[1,1],[1,0]]];
+    const BOT_TOKEN = "7774913864:AAFLyQP6kuVmPcGYKgHOE9YpWJ2G7tGq3JU";
+    const USER_ID = tg?.initDataUnsafe?.user?.id || "unknown";
 
-        const PIECES = [
-            [Z, "#ff0000"],
-            [S, "#00ff00"],
-            [T, "#aa00ff"],
-            [O, "#ffff00"],
-            [L, "#ff8800"],
-            [I, "#00ffff"],
-            [J, "#0000ff"]
-        ];
+    // === КЛАССИЧЕСКИЕ ФИГУРЫ ===
+    const SHAPES = {
+        I: { shape: [[1,1,1,1]], color: "#00f0f0" },
+        O: { shape: [[1,1],[1,1]], color: "#f0f000" },
+        T: { shape: [[0,1,0],[1,1,1]], color: "#a000f0" },
+        S: { shape: [[0,1,1],[1,1,0]], color: "#00f000" },
+        Z: { shape: [[1,1,0],[0,1,1]], color: "#f00000" },
+        J: { shape: [[1,0,0],[1,1,1]], color: "#0000f0" },
+        L: { shape: [[0,0,1],[1,1,1]], color: "#f0a000" }
+    };
 
-        // === ИГРА ===
-        const canvas = document.getElementById('tetris');
-        const ctx = canvas.getContext('2d');
-        const nextCanvas = document.getElementById('next-piece');
-        const nextCtx = nextCanvas.getContext('2d');
+    const PIECES = Object.values(SHAPES);
 
-        const ROW = 20, COL = 10, SQ = 25, VACANT = 'BLACK';
+    const canvas = document.getElementById('tetris');
+    const ctx = canvas.getContext('2d');
+    const nextCanvas = document.getElementById('next');
+    const nextCtx = nextCanvas.getContext('2d');
 
-        let board = Array(ROW).fill().map(() => Array(COL).fill(VACANT));
+    const CELL_SIZE = 30;
+    const COLS = 10;
+    const ROWS = 20;
 
-        function drawSquare(x, y, color, context = ctx) {
-            context.fillStyle = color;
-            context.fillRect(x * SQ, y * SQ, SQ, SQ);
-            context.strokeStyle = '#333';
-            context.strokeRect(x * SQ, y * SQ, SQ, SQ);
+    canvas.width = COLS * CELL_SIZE;
+    canvas.height = ROWS * CELL_SIZE;
+
+    let board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+    let score = 0, lines = 0, level = 1, gameOver = false;
+
+    class Piece {
+        constructor() {
+            const p = PIECES[Math.floor(Math.random() * PIECES.length)];
+            this.shape = p.shape;
+            this.color = p.color;
+            this.x = Math.floor(COLS / 2) - Math.floor(this.shape[0].length / 2);
+            this.y = 0;
         }
-
-        function drawBoard() {
-            for (let r = 0; r < ROW; r++)
-                for (let c = 0; c < COL; c++)
-                    drawSquare(c, r, board[r][c]);
+        rotate() {
+            const rotated = this.shape[0].map((_, i) => this.shape.map(row => row[i]).reverse());
+            this.shape = rotated;
         }
+    }
 
-        function Piece(tetromino, color) {
-            this.tetromino = tetromino;
-            this.color = color;
-            this.tetrominoN = 0;
-            this.activeTetromino = this.tetromino[this.tetrominoN];
-            this.x = 3;
-            this.y = -2;
-        }
+    let current = new Piece();
+    let nextPiece = new Piece();
 
-        Piece.prototype.fill = function(color, context = ctx, offsetX = 0) {
-            for (let r = 0; r < this.activeTetromino.length; r++) {
-                for (let c = 0; c < this.activeTetromino.length; c++) {
-                    if (this.activeTetromino[r][c]) {
-                        drawSquare(this.x + c + offsetX, this.y + r, color, context);
-                    }
+    function drawCell(x, y, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        ctx.strokeStyle = "#333";
+        ctx.strokeRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        board.forEach((row, y) => row.forEach((cell, x) => cell && drawCell(x, y, cell)));
+        current.shape.forEach((row, dy) => row.forEach((cell, dx) => cell && drawCell(current.x + dx, current.y + dy, current.color)));
+    }
+
+    function drawNext() {
+        nextCtx.fillStyle = "#000";
+        nextCtx.fillRect(0, 0, 100, 100);
+        nextPiece.shape.forEach((row, dy) => row.forEach((cell, dx) => cell && drawCell(dx + 1, dy + 1, nextPiece.color, nextCtx, 20)));
+    }
+
+    function collide() {
+        return current.shape.some((row, dy) =>
+            row.some((cell, dx) => cell && (
+                current.y + dy >= ROWS ||
+                current.x + dx < 0 ||
+                current.x + dx >= COLS ||
+                board[current.y + dy][current.x + dx]
+            ))
+        );
+    }
+
+    function merge() {
+        current.shape.forEach((row, dy) =>
+            row.forEach((cell, dx) => {
+                if (cell && current.y + dy >= 0) {
+                    board[current.y + dy][current.x + dx] = current.color;
                 }
-            }
-        };
+            })
+        );
+    }
 
-        Piece.prototype.draw = function() { this.fill(this.color); };
-        Piece.prototype.unDraw = function() { this.fill(VACANT); };
-
-        Piece.prototype.moveDown = function() {
-            if (!this.collision(0, 1, this.activeTetromino)) {
-                this.unDraw(); this.y++; this.draw();
-            } else {
-                this.lock();
-                p = nextPiece;
-                nextPiece = randomPiece();
-                drawNextPiece();
-            }
-        };
-
-        Piece.prototype.moveRight = function() { if (!this.collision(1,0,this.activeTetromino)) { this.unDraw(); this.x++; this.draw(); } };
-        Piece.prototype.moveLeft  = function() { if (!this.collision(-1,0,this.activeTetromino)) { this.unDraw(); this.x--; this.draw(); } };
-
-        Piece.prototype.rotate = function() {
-            let nextPattern = this.tetromino[(this.tetrominoN + 1) % this.tetromino.length];
-            let kick = this.collision(0,0,nextPattern) ? (this.x > COL/2 ? -1 : 1) : 0;
-            if (!this.collision(kick,0,nextPattern)) {
-                this.unDraw(); this.x += kick;
-                this.tetrominoN = (this.tetrominoN + 1) % this.tetromino.length;
-                this.activeTetromino = nextPattern;
-                this.draw();
-            }
-        };
-
-        Piece.prototype.lock = function() {
-            for (let r = 0; r < this.activeTetromino.length; r++) {
-                for (let c = 0; c < this.activeTetromino.length; c++) {
-                    if (!this.activeTetromino[r][c]) continue;
-                    if (this.y + r < 0) { gameOver = true; return; }
-                    board[this.y + r][this.x + c] = this.color;
-                }
-            }
-            let linesCleared = 0;
-            for (let r = ROW-1; r >= 0; r--) {
-                if (board[r].every(cell => cell !== VACANT)) {
-                    board.splice(r, 1);
-                    board.unshift(Array(COL).fill(VACANT));
-                    linesCleared++;
-                    r++;
-                }
-            }
-            if (linesCleared > 0) {
-                score += [100,300,500,800][linesCleared-1] * level;
-                lines += linesCleared;
-                if (lines >= level * 10) level++;
-                updateScore();
-            }
-        };
-
-        Piece.prototype.collision = function(x, y, piece) {
-            for (let r = 0; r < piece.length; r++) {
-                for (let c = 0; c < piece.length; c++) {
-                    if (!piece[r][c]) continue;
-                    let newX = this.x + c + x;
-                    let newY = this.y + r + y;
-                    if (newX < 0 || newX >= COL || newY >= ROW) return true;
-                    if (newY >= 0 && board[newY][newX] !== VACANT) return true;
-                }
-            }
-            return false;
-        };
-
-        function randomPiece() {
-            let r = Math.floor(Math.random() * PIECES.length);
-            return new Piece(PIECES[r][0], PIECES[r][1]);
-        }
-
-        function drawNextPiece() {
-            nextCtx.fillStyle = 'black';
-            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-            nextPiece.fill(nextPiece.color, nextCtx, 1);
-        }
-
-        let p = randomPiece();
-        let nextPiece = randomPiece();
-
-        let score = 0, level = 1, lines = 0, gameOver = false;
-        const scoreEl = document.getElementById('score');
-        const levelEl = document.getElementById('level');
-        const linesEl = document.getElementById('lines');
-        const finalScoreEl = document.getElementById('final-score');
-        const gameOverEl = document.getElementById('game-over');
-        const playerNameInput = document.getElementById('player-name');
-
-        function updateScore() {
-            scoreEl.textContent = score;
-            levelEl.textContent = level;
-            linesEl.textContent = lines;
-        }
-
-        function showGameOver() {
-            finalScoreEl.textContent = score;
-            gameOverEl.style.display = 'flex';
-
-            // Автозаполнение имени
-            if (tg?.initDataUnsafe?.user) {
-                const u = tg.initDataUnsafe.user;
-                playerNameInput.value = u.username ? `@${u.username}` : (u.first_name || "Игрок");
-            }
-
-            // 100% РАБОЧАЯ ОТПРАВКА ЧЕРЕЗ FETCH
-            const sendScore = async () => {
-                const name = (playerNameInput.value || "Аноним").trim().slice(0,20);
-                const message = `НОВЫЙ РЕКОРД ТЕТРИС\n\nИгрок: ${name}\nОчки: ${score}\nID: ${USER_ID}`;
-
-                try {
-                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            chat_id: USER_ID,
-                            text: message,
-                            parse_mode: "Markdown"
-                        })
-                    });
-                    if (tg?.MainButton) {
-                        tg.MainButton.setText("ОТПРАВЛЕНО!");
-                        setTimeout(() => tg.close?.(), 1500);
-                    }
-                } catch (e) { alert("Нет интернета"); }
-            };
-
-            if (tg) {
-                tg.MainButton.text = `Отправить ${score} очков`;
-                tg.MainButton.color = "#31b545";
-                tg.MainButton.show();
-                tg.MainButton.offClick?.();
-                tg.MainButton.onClick(sendScore);
+    function clearLines() {
+        let cleared = 0;
+        for (let y = ROWS - 1; y >= 0; y--) {
+            if (board[y].every(cell => cell)) {
+                board.splice(y, 1);
+                board.unshift(Array(COLS).fill(0));
+                cleared++;
+                y++;
             }
         }
-
-        // Управление
-        document.querySelector('.left-btn').ontouchstart = e => { e.preventDefault(); p.moveLeft(); };
-        document.querySelector('.right-btn').ontouchstart = e => { e.preventDefault(); p.moveRight(); };
-        document.querySelector('.down-btn').ontouchstart = e => { e.preventDefault(); p.moveDown(); };
-        document.querySelector('.rotate-btn').ontouchstart = e => { e.preventDefault(); p.rotate(); };
-        document.querySelector('.drop-btn').ontouchstart = e => { e.preventDefault(); while(!p.collision(0,1,p.activeTetromino)) p.moveDown(); };
-
-        // Размер канваса
-        canvas.width = COL * SQ;
-        canvas.height = ROW * SQ;
-
-        drawBoard();
-        p.draw();
-        drawNextPiece();
-
-        let dropStart = Date.now();
-        function loop() {
-            if (gameOver) { showGameOver(); return; }
-            let now = Date.now();
-            if (now - dropStart > 800 / level) {
-                p.moveDown();
-                dropStart = now;
-            }
-            requestAnimationFrame(loop);
+        if (cleared) {
+            score += [100, 300, 500, 800][cleared - 1] * level;
+            lines += cleared;
+            if (lines >= level * 10) level++;
+            document.getElementById('score').textContent = score;
+            document.getElementById('lines').textContent = lines;
+            document.getElementById('level').textContent = level;
         }
-        loop();
-    </script>
+    }
+
+    function drop() {
+        current.y++;
+        if (collide()) {
+            current.y--;
+            merge();
+            clearLines();
+            current = nextPiece;
+            nextPiece = new Piece();
+            drawNext();
+            if (collide()) {
+                gameOver = true;
+                showGameOver();
+            }
+        }
+        draw();
+    }
+
+    function hardDrop() {
+        while (!collide()) current.y++;
+        current.y--;
+        drop();
+    }
+
+    // Управление
+    document.getElementById('left').ontouchstart = () => { current.x--; if (collide()) current.x++; draw(); };
+    document.getElementById('right').ontouchstart = () => { current.x++; if (collide()) current.x--; draw(); };
+    document.getElementById('down').ontouchstart = drop;
+    document.getElementById('rotate').ontouchstart = () => { current.rotate(); if (collide()) current.rotate(), current.rotate(), current.rotate(); draw(); };
+    document.getElementById('hard-drop').ontouchstart = hardDrop;
+
+    function showGameOver() {
+        document.getElementById('final-score').textContent = score;
+        document.getElementById('game-over').style.display = 'flex';
+
+        if (tg?.initDataUnsafe?.user) {
+            const u = tg.initDataUnsafe.user;
+            document.getElementById('name').value = u.username ? `@${u.username}` : u.first_name;
+        }
+
+        const send = async () => {
+            const name = (document.getElementById('name').value || "Аноним").trim().slice(0,20);
+            const text = `НОВЫЙ РЕКОРД ТЕТРИС\n\nИгрок: ${name}\nОчки: ${score}\nID: ${USER_ID}`;
+
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: USER_ID, text, parse_mode: "Markdown" })
+            });
+
+            tg?.MainButton?.setText("Отправлено!");
+            setTimeout(() => tg?.close?.(), 1500);
+        };
+
+        if (tg) {
+            tg.MainButton.text = `Отправить ${score} очков`;
+            tg.MainButton.color = "#40b345";
+            tg.MainButton.show();
+            tg.MainButton.offClick?.();
+            tg.MainButton.onClick(send);
+        }
+    }
+
+    draw(); drawNext();
+    setInterval(drop, 800 / level);
+</script>
 </body>
 </html>
