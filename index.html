@@ -23,6 +23,9 @@
         .go{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:999;justify-content:center;align-items:center;padding:20px;}
         .gobox{background:rgba(255,255,255,0.12);padding:30px;border-radius:20px;text-align:center;max-width:340px;width:100%;backdrop-filter:blur(12px);}
         input{width:100%;padding:14px;margin:14px 0;border:none;border-radius:12px;font-size:18px;text-align:center;background:rgba(255,255,255,0.9);color:#000;}
+        .copy-section{display:none;margin-top:15px;padding:15px;background:rgba(255,255,255,0.1);border-radius:12px;text-align:center;}
+        .copy-text{background:rgba(255,255,255,0.9);color:#000;padding:12px;border-radius:8px;margin:10px 0;font-family:monospace;font-size:14px;}
+        .copy-btn{background:#2196F3;color:white;border:none;padding:12px;border-radius:8px;width:100%;font-size:16px;}
     </style>
 </head>
 <body>
@@ -45,6 +48,14 @@
         <div class="btn">→</div>
         <div class="btn drop">БЫСТРО ВНИЗ</div>
     </div>
+    
+    <!-- Секция для копирования результата -->
+    <div class="copy-section" id="copy-section">
+        <div style="margin-bottom:10px;">📋 Если результат не отправился:</div>
+        <div class="copy-text" id="result-text"></div>
+        <button class="copy-btn" id="copy-btn">📋 Скопировать результат</button>
+        <div style="margin-top:10px;font-size:12px;opacity:0.7;">Отправьте этот текст боту</div>
+    </div>
 </div>
 
 <div class="go" id="go">
@@ -60,6 +71,7 @@
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
     const TOKEN = "7774913864:AAFLyQP6kuVmPcGYKgHOE9YpWJ2G7tGq3JU";
+    const CHANNEL_ID = "@raskosh3"; // Ваш канал
     const UID = tg?.initDataUnsafe?.user?.id || "unknown";
 
     const W = 10, H = 20, S = 26;
@@ -163,6 +175,105 @@
         draw();
     }
 
+    // ОБНОВЛЕННАЯ ФУНКЦИЯ ОТПРАВКИ
+    async function sendScore() {
+        const playerName = (document.getElementById('name').value || "Аноним").trim().slice(0, 18);
+        const scoreData = {
+            action: 'save_score',
+            name: playerName,
+            score: score,
+            user_id: UID,
+            timestamp: new Date().toISOString(),
+            platform: 'tetris_webapp'
+        };
+
+        console.log("📤 Отправка результата:", scoreData);
+
+        try {
+            // Пробуем отправить через Telegram WebApp
+            if (tg) {
+                tg.sendData(JSON.stringify(scoreData));
+                console.log("✅ Данные отправлены через WebApp");
+                
+                tg.MainButton.setText("✅ Отправлено!");
+                setTimeout(() => {
+                    if (tg.close) tg.close();
+                }, 1500);
+                return;
+            }
+        } catch (webappError) {
+            console.log("❌ WebApp отправка не удалась:", webappError);
+        }
+
+        // Если WebApp не сработал, пробуем отправить прямо в канал
+        try {
+            const messageText = `🏆 НОВЫЙ РЕКОРД ТЕТРИС! 🏆\n\n👤 Игрок: ${playerName}\n🎯 Очки: ${score}\n📅 Время: ${new Date().toLocaleString()}\n\n#тетрис #рекорд`;
+            
+            const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+                method: "POST", 
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    chat_id: CHANNEL_ID,
+                    text: messageText,
+                    parse_mode: "HTML"
+                })
+            });
+
+            if (response.ok) {
+                console.log("✅ Результат отправлен в канал!");
+                alert(`✅ Результат отправлен!\n${playerName}: ${score} очков`);
+                
+                if (tg?.MainButton) {
+                    tg.MainButton.setText("✅ Отправлено!");
+                    setTimeout(() => {
+                        if (tg.close) tg.close();
+                    }, 1500);
+                }
+            } else {
+                throw new Error("Ошибка HTTP: " + response.status);
+            }
+        } catch (fetchError) {
+            console.error("❌ Ошибка отправки:", fetchError);
+            // Показываем секцию для копирования
+            showCopySection(playerName, score);
+        }
+    }
+
+    // Функция показа секции копирования
+    function showCopySection(playerName, score) {
+        const resultText = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\n👤 Игрок: ${playerName}\n🎯 Очки: ${score}\n📅 Время: ${new Date().toLocaleString()}\n\nОтправьте этот текст боту для сохранения результата`;
+        
+        document.getElementById('result-text').textContent = resultText;
+        document.getElementById('copy-section').style.display = 'block';
+        
+        alert("📋 Скопируйте результат ниже и отправьте боту");
+    }
+
+    // Обработчик копирования
+    document.getElementById('copy-btn').addEventListener('click', async function() {
+        const text = document.getElementById('result-text').textContent;
+        try {
+            await navigator.clipboard.writeText(text);
+            this.textContent = '✅ Скопировано!';
+            setTimeout(() => {
+                this.textContent = '📋 Скопировать результат';
+            }, 2000);
+        } catch (err) {
+            // Альтернативный способ копирования
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            this.textContent = '✅ Скопировано!';
+            setTimeout(() => {
+                this.textContent = '📋 Скопировать результат';
+            }, 2000);
+        }
+    });
+
     function end() {
         document.getElementById('final').textContent = score;
         document.getElementById('go').style.display = 'flex';
@@ -170,24 +281,22 @@
             const u = tg.initDataUnsafe.user;
             document.getElementById('name').value = u.username ? `@${u.username}` : u.first_name;
         }
-        const send = async () => {
-            const n = (document.getElementById('name').value || "Аноним").trim().slice(0, 18);
-            const text = `НОВЫЙ РЕКОРД ТЕТРИС\n\nИгрок: ${n}\nОчки: ${score}\nID: ${UID}`;
-            await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-                method: "POST", 
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({chat_id: UID, text: text, parse_mode: "Markdown"})
-            });
-            if (tg?.MainButton) {
-                tg.MainButton.setText("Отправлено!"); 
-                setTimeout(() => tg.close?.(), 1500);
-            }
-        };
-        if (tg) {
-            tg.MainButton.text = `Отправить ${score} очков`;
+        
+        // Настройка кнопки Telegram
+        if (tg?.MainButton) {
+            tg.MainButton.setText(`📤 Отправить ${score} очков`);
             tg.MainButton.color = "#40b345";
             tg.MainButton.show();
-            tg.MainButton.onClick(send);
+            tg.MainButton.onClick(sendScore);
+        } else {
+            // Если не в Telegram, сразу показываем кнопку отправки
+            setTimeout(() => {
+                const sendBtn = document.createElement('button');
+                sendBtn.textContent = `📤 Отправить ${score} очков`;
+                sendBtn.style.cssText = 'width:100%;padding:14px;background:#40b345;color:white;border:none;border-radius:12px;font-size:16px;margin-top:10px;';
+                sendBtn.onclick = sendScore;
+                document.querySelector('.gobox').appendChild(sendBtn);
+            }, 500);
         }
     }
 
