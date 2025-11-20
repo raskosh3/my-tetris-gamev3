@@ -71,7 +71,7 @@
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
     const TOKEN = "7774913864:AAFLyQP6kuVmPcGYKgHOE9YpWJ2G7tGq3JU";
-    const CHANNEL_ID = "@raskosh3"; // Ваш канал
+    const CHANNEL_ID = "@raskosh3";
     const UID = tg?.initDataUnsafe?.user?.id || "unknown";
 
     const W = 10, H = 20, S = 26;
@@ -89,6 +89,22 @@
 
     let board = Array.from({length:H}, () => Array(W).fill(0));
     let p, np, score = 0, lines = 0, level = 1;
+
+    // Функция для генерации игрового токена
+    function generateGameToken(score, lines, level) {
+        const secret = "tetris_verification_2024";
+        const timestamp = Math.floor(Date.now() / 60000); // Округляем до минут
+        const data = `${score}:${lines}:${level}:${timestamp}:${secret}`;
+        
+        // Простая хеш-функция (аналогичная в боте)
+        let hash = 0;
+        for (let i = 0; i < data.length; i++) {
+            const char = data.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(16).substring(0, 16);
+    }
 
     function npiece() {
         const i = Math.floor(Math.random() * SHAPES.length);
@@ -175,74 +191,79 @@
         draw();
     }
 
-    // ОБНОВЛЕННАЯ ФУНКЦИЯ ОТПРАВКИ
-async function sendScore() {
-    const playerName = (document.getElementById('name').value || "Аноним").trim().slice(0, 18);
-    
-    console.log("📤 Отправка результата:", { playerName, score });
-
-    try {
-        // 1. Сохраняем в таблицу рекордов (отправляем боту)
-        const scoreMessage = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\n\nИгрок: ${playerName}\nОчки: ${score}\nВремя: ${new Date().toLocaleString()}\nID: ${UID}`;
+    // ОБНОВЛЕННАЯ ФУНКЦИЯ ОТПРАВКИ С ВЕРИФИКАЦИЕЙ
+    async function sendScore() {
+        const playerName = (document.getElementById('name').value || "Аноним").trim().slice(0, 18);
+        const gameToken = generateGameToken(score, lines, level);
         
-        await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-            method: "POST", 
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                chat_id: UID, // Отправляем самому себе
-                text: scoreMessage,
-                parse_mode: "Markdown"
-            })
-        });
-        console.log("✅ Результат отправлен боту для сохранения");
+        console.log("📤 Отправка результата:", { playerName, score, lines, level, token: gameToken });
 
-        // 2. Публикуем в канал
-        const channelMessage = `🏆 НОВЫЙ РЕКОРД ТЕТРИС! 🏆
+        try {
+            // Формируем сообщение с токеном
+            const scoreMessage = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\n\nИгрок: ${playerName}\nОчки: ${score}\nЛинии: ${lines}\nУровень: ${level}\nТокен: ${gameToken}\nID: ${UID}\nВремя: ${new Date().toLocaleString()}`;
+            
+            // Отправляем боту
+            await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+                method: "POST", 
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    chat_id: UID,
+                    text: scoreMessage,
+                    parse_mode: "Markdown"
+                })
+            });
+            console.log("✅ Результат отправлен боту для сохранения");
+
+            // Отправляем в канал если результат хороший
+            if (score >= 1000) {
+                const channelMessage = `🏆 НОВЫЙ РЕКОРД ТЕТРИС! 🏆
 
 👤 Игрок: <b>${playerName}</b>
 🎯 Очки: <b>${score}</b>
+📊 Линии: <b>${lines}</b>
+🚀 Уровень: <b>${level}</b>
 📅 Время: ${new Date().toLocaleString()}
 
 #тетрис #рекорд`;
 
-        const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-            method: "POST", 
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                chat_id: CHANNEL_ID,
-                text: channelMessage,
-                parse_mode: "HTML"
-            })
-        });
+                const response = await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+                    method: "POST", 
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        chat_id: CHANNEL_ID,
+                        text: channelMessage,
+                        parse_mode: "HTML"
+                    })
+                });
 
-        if (response.ok) {
-            console.log("✅ Результат опубликован в канале!");
-            alert(`✅ Результат сохранен!\n${playerName}: ${score} очков\n\nЗагляни в канал @raskosh3!`);
+                if (response.ok) {
+                    console.log("✅ Результат опубликован в канале!");
+                }
+            }
+
+            alert(`✅ Результат сохранен!\n${playerName}: ${score} очков`);
             
             if (tg?.MainButton) {
                 tg.MainButton.setText("✅ Готово!");
                 setTimeout(() => tg.close?.(), 2000);
             }
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.description || "Ошибка HTTP: " + response.status);
-        }
 
-    } catch (error) {
-        console.error("❌ Ошибка:", error);
-        
-        // Показываем вариант для ручной отправки
-        const resultText = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\nИгрок: ${playerName}\nОчки: ${score}\nВремя: ${new Date().toLocaleString()}\n\nОтправьте этот текст боту @raskosh3_bot`;
-        document.getElementById('result-text').textContent = resultText;
-        document.getElementById('copy-section').style.display = 'block';
-        
-        alert("📋 Скопируйте результат ниже и отправьте боту вручную");
+        } catch (error) {
+            console.error("❌ Ошибка:", error);
+            
+            // Показываем вариант для ручной отправки
+            const resultText = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\nИгрок: ${playerName}\nОчки: ${score}\nЛинии: ${lines}\nУровень: ${level}\nТокен: ${gameToken}\nID: ${UID}\nВремя: ${new Date().toLocaleString()}\n\nОтправьте этот текст боту @raskosh3_bot`;
+            document.getElementById('result-text').textContent = resultText;
+            document.getElementById('copy-section').style.display = 'block';
+            
+            alert("📋 Скопируйте результат ниже и отправьте боту вручную");
+        }
     }
-}
-   
+
     // Функция показа секции копирования
     function showCopySection(playerName, score) {
-        const resultText = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\n👤 Игрок: ${playerName}\n🎯 Очки: ${score}\n📅 Время: ${new Date().toLocaleString()}\n\nОтправьте этот текст боту для сохранения результата`;
+        const gameToken = generateGameToken(score, lines, level);
+        const resultText = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\nИгрок: ${playerName}\nОчки: ${score}\nЛинии: ${lines}\nУровень: ${level}\nТокен: ${gameToken}\nID: ${UID}\nВремя: ${new Date().toLocaleString()}\n\nОтправьте этот текст боту для сохранения результата`;
         
         document.getElementById('result-text').textContent = resultText;
         document.getElementById('copy-section').style.display = 'block';
@@ -290,7 +311,7 @@ async function sendScore() {
             tg.MainButton.show();
             tg.MainButton.onClick(sendScore);
         } else {
-            // Если не в Telegram, сразу показываем кнопку отправки
+            // Если не в Telegram, показываем кнопку отправки
             setTimeout(() => {
                 const sendBtn = document.createElement('button');
                 sendBtn.textContent = `📤 Отправить ${score} очков`;
@@ -341,6 +362,3 @@ async function sendScore() {
 </script>
 </body>
 </html>
-
-
-
