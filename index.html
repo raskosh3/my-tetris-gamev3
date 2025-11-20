@@ -51,10 +51,10 @@
     
     <!-- Секция для копирования результата -->
     <div class="copy-section" id="copy-section">
-        <div style="margin-bottom:10px;">📋 Если результат не отправился:</div>
+        <div style="margin-bottom:10px;">📋 Скопируй и отправь боту:</div>
         <div class="copy-text" id="result-text"></div>
         <button class="copy-btn" id="copy-btn">📋 Скопировать результат</button>
-        <div style="margin-top:10px;font-size:12px;opacity:0.7;">Отправьте этот текст боту</div>
+        <div style="margin-top:10px;font-size:12px;opacity:0.7;">Отправь этот текст боту @raskosh3_bot</div>
     </div>
 </div>
 
@@ -63,15 +63,13 @@
         <h2>Игра окончена!</h2>
         <h3>Очки: <span id="final">0</span></h3>
         <input type="text" id="name" placeholder="Твоё имя" maxlength="18">
-        <p style="margin-top:18px;opacity:0.7;font-size:14px;">Нажми зелёную кнопку внизу</p>
+        <p style="margin-top:18px;opacity:0.7;font-size:14px;">Нажми кнопку ниже чтобы сохранить результат</p>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram?.WebApp;
     if (tg) { tg.ready(); tg.expand(); }
-    const TOKEN = "7774913864:AAFLyQP6kuVmPcGYKgHOE9YpWJ2G7tGq3JU";
-    const CHANNEL_ID = "@raskosh3";
     const UID = tg?.initDataUnsafe?.user?.id || "unknown";
 
     const W = 10, H = 20, S = 26;
@@ -89,22 +87,6 @@
 
     let board = Array.from({length:H}, () => Array(W).fill(0));
     let p, np, score = 0, lines = 0, level = 1;
-
-    // Функция для генерации игрового токена
-    function generateGameToken(score, lines, level) {
-        const secret = "tetris_verification_2024";
-        const timestamp = Math.floor(Date.now() / 60000); // Округляем до минут
-        const data = `${score}:${lines}:${level}:${timestamp}:${secret}`;
-        
-        // Простая хеш-функция (аналогичная в боте)
-        let hash = 0;
-        for (let i = 0; i < data.length; i++) {
-            const char = data.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
-        }
-        return Math.abs(hash).toString(16).substring(0, 16);
-    }
 
     function npiece() {
         const i = Math.floor(Math.random() * SHAPES.length);
@@ -191,68 +173,28 @@
         draw();
     }
 
-   // УПРОЩЕННАЯ ФУНКЦИЯ ОТПРАВКИ
-async function sendScore() {
-    const playerName = (document.getElementById('name').value || "Аноним").trim().slice(0, 18);
-    
-    console.log("📤 Отправка результата:", { playerName, score, lines, level });
+    // ПРОСТАЯ ФУНКЦИЯ СОХРАНЕНИЯ
+    function saveScore() {
+        const playerName = (document.getElementById('name').value || "Аноним").trim().slice(0, 18);
+        
+        // Формируем текст результата
+        const resultText = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆
 
-    try {
-        // Формируем сообщение для отправки
-        const scoreMessage = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\n\nИгрок: ${playerName}\nОчки: ${score}\nЛинии: ${lines}\nУровень: ${level}\nID: ${UID}\nВремя: ${new Date().toLocaleString()}`;
-        
-        // Пытаемся отправить через Telegram WebApp
-        if (tg && tg.sendData) {
-            // Отправляем данные через WebApp
-            const webAppData = JSON.stringify({
-                action: 'save_score',
-                player: playerName,
-                score: score,
-                lines: lines,
-                level: level,
-                uid: UID
-            });
-            
-            tg.sendData(webAppData);
-            console.log("✅ Данные отправлены через WebApp");
-        }
-        
-        // Всегда показываем сообщение об успехе
-        alert(`✅ Результат отправлен!\n${playerName}: ${score} очков\n\n📋 Если результат не сохранился, скопируй сообщение выше и отправь боту вручную`);
-        
-        // Закрываем игру
-        if (tg?.MainButton) {
-            tg.MainButton.setText("✅ Готово!");
-            setTimeout(() => {
-                tg.close();
-            }, 2000);
-        } else {
-            setTimeout(() => {
-                document.getElementById('go').style.display = 'none';
-            }, 2000);
-        }
+👤 Игрок: ${playerName}
+🎯 Очки: ${score}
+📊 Линии: ${lines}
+🚀 Уровень: ${level}
+🆔 ID: ${UID}
+📅 Время: ${new Date().toLocaleString()}
 
-    } catch (error) {
-        console.error("❌ Ошибка отправки:", error);
+Отправь это сообщение боту @raskosh3_bot чтобы сохранить результат!`;
         
-        // Показываем вариант для ручной отправки
-        const resultText = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\nИгрок: ${playerName}\nОчки: ${score}\nЛинии: ${lines}\nУровень: ${level}\nID: ${UID}\nВремя: ${new Date().toLocaleString()}\n\nОтправьте этот текст боту @raskosh3_bot`;
+        // Показываем секцию копирования
         document.getElementById('result-text').textContent = resultText;
         document.getElementById('copy-section').style.display = 'block';
+        document.getElementById('go').style.display = 'none';
         
-        alert("❌ Автоматическая отправка не удалась. Скопируйте результат ниже и отправьте боту вручную.");
-    }
-}
-
-    // Функция показа секции копирования
-    function showCopySection(playerName, score) {
-        const gameToken = generateGameToken(score, lines, level);
-        const resultText = `🏆 РЕЗУЛЬТАТ ТЕТРИС 🏆\nИгрок: ${playerName}\nОчки: ${score}\nЛинии: ${lines}\nУровень: ${level}\nТокен: ${gameToken}\nID: ${UID}\nВремя: ${new Date().toLocaleString()}\n\nОтправьте этот текст боту для сохранения результата`;
-        
-        document.getElementById('result-text').textContent = resultText;
-        document.getElementById('copy-section').style.display = 'block';
-        
-        alert("📋 Скопируйте результат ниже и отправьте боту");
+        alert('📋 Результат готов! Скопируй текст ниже и отправь боту ');
     }
 
     // Обработчик копирования
@@ -290,18 +232,18 @@ async function sendScore() {
         
         // Настройка кнопки Telegram
         if (tg?.MainButton) {
-            tg.MainButton.setText(`📤 Отправить ${score} очков`);
+            tg.MainButton.setText(`💾 Сохранить ${score} очков`);
             tg.MainButton.color = "#40b345";
             tg.MainButton.show();
-            tg.MainButton.onClick(sendScore);
+            tg.MainButton.onClick(saveScore);
         } else {
-            // Если не в Telegram, показываем кнопку отправки
+            // Если не в Telegram, показываем кнопку сохранения
             setTimeout(() => {
-                const sendBtn = document.createElement('button');
-                sendBtn.textContent = `📤 Отправить ${score} очков`;
-                sendBtn.style.cssText = 'width:100%;padding:14px;background:#40b345;color:white;border:none;border-radius:12px;font-size:16px;margin-top:10px;';
-                sendBtn.onclick = sendScore;
-                document.querySelector('.gobox').appendChild(sendBtn);
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = `💾 Сохранить ${score} очков`;
+                saveBtn.style.cssText = 'width:100%;padding:14px;background:#40b345;color:white;border:none;border-radius:12px;font-size:16px;margin-top:10px;';
+                saveBtn.onclick = saveScore;
+                document.querySelector('.gobox').appendChild(saveBtn);
             }, 500);
         }
     }
@@ -346,8 +288,3 @@ async function sendScore() {
 </script>
 </body>
 </html>
-
-
-
-
-
