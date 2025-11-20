@@ -6,43 +6,38 @@
     <title>Тетрис</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin:0; padding:0; box-sizing:border-box; touch-action:manipulation; }
-        body { background:#0d0d0d; color:white; font-family:Arial; display:flex; flex-direction:column; height:100vh; }
-        .container { flex:1; display:flex; flex-direction:column; max-width:420px; margin:0 auto; padding:8px; gap:8px; }
-        .header { display:flex; justify-content:space-between; background:rgba(255,255,255,0.08); padding:10px; border-radius:12px; font-size:14px; }
-        .game-area { display:flex; gap:10px; }
-        canvas { background:#111; border:3px solid #333; border-radius:10px; image-rendering:pixelated; }
-        #tetris { flex:1; }
-        .side { width:90px; display:flex; flex-direction:column; gap:10px; }
-        .next-box { background:rgba(255,255,255,0.08); padding:8px; border-radius:10px; text-align:center; font-size:12px; }
-        #next { width:80px; height:80px; background:#000; margin:5px auto; display:block; }
-        .controls { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
-        .btn { background:rgba(255,255,255,0.15); border:2px solid rgba(255,255,255,0.3); border-radius:12px; height:58px; font-size:26px; display:flex; align-items:center; justify-content:center; }
-        .btn:active { background:rgba(255,255,255,0.4); transform:scale(0.95); }
-        .drop { grid-column:1/4; background:#c62828; font-size:15px; }
-        .game-over { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:999; justify-content:center; align-items:center; padding:20px; }
-        .go { background:rgba(255,255,255,0.1); padding:30px; border-radius:18px; text-align:center; max-width:360px; width:100%; backdrop-filter:blur(10px); }
-        input { width:100%; padding:14px; margin:12px 0; border:none; border-radius:10px; font-size:18px; text-align:center; }
+        *{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation;}
+        body{background:#000;color:#fff;font-family:Arial;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+        .wrap{max-width:400px;margin:0 auto;width:100%;padding:10px 8px;display:flex;flex-direction:column;height:100%;}
+        .header{background:rgba(255,255,255,0.1);padding:10px;border-radius:12px;display:flex;justify-content:space-between;font-size:14px;}
+        .game-area{display:flex;gap:10px;margin-top:8px;}
+        canvas{background:#111;border:3px solid #333;border-radius:10px;image-rendering:pixelated;}
+        #tetris{flex:1;}
+        .side{width:88px;display:flex;flex-direction:column;gap:8px;}
+        .next{background:rgba(255,255,255,0.1);border-radius:10px;padding:6px;text-align:center;font-size:12px;}
+        #next{width:76px;height:76px;background:#000;margin:4px auto 0;display:block;}
+        .controls{margin-top:10px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+        .btn{background:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,0.35);border-radius:12px;height:52px;font-size:26px;display:flex;align-items:center;justify-content:center;}
+        .btn:active{background:rgba(255,255,255,0.45);transform:scale(0.94);}
+        .drop{grid-column:1/5;background:#c62828 !important;font-size:15px;height:48px;}
+        .go{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:999;justify-content:center;align-items:center;padding:20px;}
+        .gobox{background:rgba(255,255,255,0.12);padding:30px;border-radius:20px;text-align:center;max-width:340px;width:100%;backdrop-filter:blur(12px);}
+        input{width:100%;padding:14px;margin:14px 0;border:none;border-radius:12px;font-size:18px;text-align:center;background:rgba(255,255,255,0.9);color:#000;}
     </style>
 </head>
 <body>
-<div class="container">
+<div class="wrap">
     <div class="header">
         <div>Очки: <b id="score">0</b></div>
         <div>Уровень: <b id="level">1</b></div>
         <div>Линии: <b id="lines">0</b></div>
     </div>
-    
     <div class="game-area">
         <canvas id="tetris"></canvas>
         <div class="side">
-            <div class="next-box">
-                Следующая<br>
-                <canvas id="next" width="80" height="80"></canvas>
-            </div>
+            <div class="next">Следующая<br><canvas id="next"></canvas></div>
         </div>
     </div>
-    
     <div class="controls">
         <div class="btn">↻</div>
         <div class="btn">←</div>
@@ -52,137 +47,87 @@
     </div>
 </div>
 
-<div class="game-over" id="gameover">
-    <div class="go">
+<div class="go" id="go">
+    <div class="gobox">
         <h2>Игра окончена!</h2>
         <h3>Очки: <span id="final">0</span></h3>
         <input type="text" id="name" placeholder="Твоё имя" maxlength="18">
-        <p style="margin-top:18px; opacity:0.7; font-size:14px;">Нажми зелёную кнопку ниже</p>
+        <p style="margin-top:18px;opacity:0.7;font-size:14px;">Нажми зелёную кнопку внизу</p>
     </div>
 </div>
 
 <script>
     const tg = window.Telegram?.WebApp;
-    if (tg) { tg.ready(); tg.expand(); }
-
+    if(tg){tg.ready();tg.expand();}
     const TOKEN = "7774913864:AAFLyQP6kuVmPcGYKgHOE9YpWJ2G7tGq3JU";
     const UID = tg?.initDataUnsafe?.user?.id || "unknown";
 
-    const COLS = 10, ROWS = 20, SIZE = 26;
-    const canvas = document.getElementById('tetris');
-    const ctx = canvas.getContext('2d');
-    canvas.width = COLS * SIZE; canvas.height = ROWS * SIZE;
+    const W=10,H=20,S=26;
+    const c=document.getElementById('tetris'); const ctx=c.getContext('2d');
+    c.width=W*S; c.height=H*S;
+    const nc=document.getElementById('next'); const nctx=nc.getContext('2d');
+    nc.width=nc.height=76;
 
-    const nextCanvas = document.getElementById('next');
-    const nctx = nextCanvas.getContext('2d');
+    const COLORS=["#00ffff","#ffff00","#aa00ff","#00ff00","#ff0000","#0000ff","#ffaa00"];
+    const SHAPES=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]]];
 
-    const COLORS = { I:"#00ffff", O:"#ffff00", T:"#aa00ff", S:"#00ff00", Z:"#ff0000", J:"#0000ff", L:"#ffaa00" };
-    const SHAPES = [
-        [[1,1,1,1]],                                               // I
-        [[1,1],[1,1]],                                             // O
-        [[0,1,0],[1,1,1]],                                         // T
-        [[0,1,1],[1,1,0]],                                         // S
-        [[1,1,0],[0,1,1]],                                         // Z
-        [[1,0,0],[1,1,1]],                                         // J
-        [[0,0,1],[1,1,1]]                                          // L
-    ];
+    let board=Array.from({length:H},()=>Array(W).fill(0));
+    let p, np, score=0, lines=0, level=1;
 
-    let board = Array.from({length:ROWS},()=>Array(COLS).fill(0));
-    let piece, nextPiece, score=0, lines=0, level=1;
+    function npiece(){const i=Math.floor(Math.random()*SHAPES.length);return{x:4,y:0,s:SHAPES[i],c:COLORS[i]};}
+    p=npiece(); np=npiece();
 
-    function newPiece() {
-        const i = Math.floor(Math.random() * SHAPES.length);
-        return { shape:SHAPES[i], color:COLORS[Object.keys(COLORS)[i]], x:Math.floor(COLS/2)-1, y:0 };
-    }
-    piece = newPiece(); nextPiece = newPiece();
-
-    function drawBoard() {
-        ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++) if(board[y][x]) {
-            ctx.fillStyle = board[y][x];
-            ctx.fillRect(x*SIZE,y*SIZE,SIZE,SIZE);
-            ctx.strokeStyle = '#222'; ctx.strokeRect(x*SIZE,y*SIZE,SIZE,SIZE);
+    function drawBoard(){
+        ctx.fillStyle="#000";ctx.fillRect(0,0,c.width,c.height);
+        for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(board[y][x]){
+            ctx.fillStyle=board[y][x];
+            ctx.fillRect(x*S,y*S,S,S);
+            ctx.strokeStyle="#222";ctx.strokeRect(x*S,y*S,S,S);
         }
     }
-
-    function drawPiece(p) {
-        p.shape.forEach((row,dy)=>row.forEach((cell,dx)=>{
-            if(cell) {
-                ctx.fillStyle = p.color;
-                ctx.fillRect((p.x+dx)*SIZE, (p.y+dy)*SIZE, SIZE, SIZE);
-                ctx.strokeStyle11 = '#222'; ctx.strokeRect((p.x+dx)*SIZE, (p.y+dy)*SIZE, SIZE, SIZE);
-            }
-        }));
+    function drawP(p){p.s.forEach((r,y)=>r.forEach((v,x)=>{if(v){ctx.fillStyle=p.c;ctx.fillRect((p.x+x)*S,(p.y+y)*S,S,S);ctx.strokeStyle="#222";ctx.strokeRect((p.x+x)*S,(p.y+y)*S,S,S);}}));}
+    function drawNext(){
+        nctx.fillStyle="#000";nctx.fillRect(0,0,76,76);
+        np.s.forEach((r,y)=>r.forEach((v,x)=>v&&nctx.fillStyle=np.c,nctx.fillRect(x*19+10,y*19+10,18,18)));
+    }
+    function collide(dx=0,dy=0){return p.s.some((r,y)=>r.some((v,x)=>v&&(p.x+x+dx<0||p.x+x+dx>=W||p.y+y+dy>=H||board[p.y+y+dy][p.x+x+dx])));}
+    function lock(){
+        p.s.forEach((r,y)=>r.forEach((v,x)=>v&&p.y+y>=0&&(board[p.y+y][p.x+x]=p.c)));
+        let cl=0;
+        for(let y=H-1;y>=0;y--)if(board[y].every(v=>v)){board.splice(y,1);board.unshift(Array(W).fill(0));cl++;}
+        if(cl){score+=[100,300,500,800][cl-1]*level;lines+=cl;if(lines>=level*10)level++;}
+        document.getElementById('score').textContent=score;
+        document.getElementById('lines').textContent=lines;
+        document.getElementById('level').textContent=level;
+        p=np;np=npiece();drawNext();
+        if(collide())end();
+    }
+    function drop(){if(!collide(0,1))p.y++;else lock();draw();}
+    function hard(){while(!collide(0,1))p.y++;lock();draw();}
+    function end(){
+        document.getElementById('final').textContent=score;
+        document.getElementById('go').style.display='flex';
+        if(tg?.initDataUnsafe?.user){
+            const u=tg.initDataUnsafe.user;
+            document.getElementById('name').value=u.username?`@${u.username}`:u.first_name;
+        }
+        const send=async()=>{const n=(document.getElementById('name').value||"Аноним").trim().slice(0,18);
+            await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({chat_id:UID,text:`НОВЫЙ РЕКОРД ТЕТРИС\n\nИгрок: ${n}\nОчки: ${score}\nID: ${UID}`,parse_mode:"Markdown"})});
+            tg?.MainButton?.setText("Отправлено!");setTimeout(()=>tg?.close?.(),1500);
+        };
+        if(tg){tg.MainButton.text=`Отправить ${score} очков`;tg.MainButton.color="#40b345";tg.MainButton.show();tg.MainButton.onClick(send);}
     }
 
-    function drawNext() {
-        nctx.fillStyle = '#000'; nctx.fillRect(0,0,80,80);
-        nextPiece.shape.forEach((row,dy)=>row.forEach((cell,dx)=>{
-            if(cell) {
-                nctx.fillStyle = nextPiece.color;
-                nctx.fillRect(dx*20+10, dy*20+10, 18, 18);
-            }
-        }));
-    }
+    document.querySelectorAll('.btn')[0].ontouchstart=e=>{e.preventDefault();const s=p.s;p.s=s[0].map((_,i)=>s.map(r=>r[i]).reverse());if(collide())p.s=s;draw();}
+    document.querySelectorAll('.btn')[1].ontouchstart=e=>{e.preventDefault();if(!collide(-1))p.x--;draw();}
+    document.querySelectorAll('.btn')[2].ontouchstart=e=>{e.preventDefault();drop();}
+    document.querySelectorAll('.btn')[3].ontouchstart=e=>{e.preventDefault();if(!collide(1))p.x++;draw();}
+    document.querySelector('.drop').ontouchstart=e=>{e.preventDefault();hard();}
 
-    function collide(dx=0, dy=0) {
-        return piece.shape.some((row,y)=>row.some((cell,x)=>
-            cell && (piece.x+x+dx<0 || piece.x+x+dx>=COLS || piece.y+y+dy>=ROWS || board[piece.y+y+dy][piece.x+x+dx])
-        ));
-    }
-
-    function lock() {
-        piece.shape.forEach((row,y)=>row.forEach((cell,x)=>{
-            if(cell && piece.y+y>=0) board[piece.y+y][piece.x+x] = piece.color;
-        }));
-        let cleared = 0;
-        for(let y=ROWS-1; y>=0; y--) if(board[y].every(c=>c)) { board.splice(y,1); board.unshift(Array(COLS).fill(0)); cleared++; }
-        if(cleared) { score += [100,300,500,800][cleared-1]*level; lines += cleared; if(lines>=level*10) level++; }
-        document.getElementById('score').textContent = score;
-        document.getElementById('lines').textContent = lines;
-        document.getElementById('level').textContent = level;
-
-        piece = nextPiece; nextPiece = newPiece(); drawNext();
-        if(collide()) { document.getElementById('gameover').style.display='flex'; document.getElementById('final').textContent=score; }
-    }
-
-    function drop() { if(!collide(0,1)) piece.y++; else lock(); drawBoard(); drawPiece(piece); }
-
-    document.querySelectorAll('.btn')[0].ontouchstart = () => { const s=piece.shape; piece.shape=s[0].map((_,i)=>s.map(r=>r[i]).reverse()); if(collide()) piece.shape=s; drawBoard(); drawPiece(piece); };
-    document.querySelectorAll('.btn')[1].ontouchstart = () => { if(!collide(-1)) piece.x--; drawBoard(); drawPiece(piece); };
-    document.querySelectorAll('.btn')[2].ontouchstart = drop;
-    document.querySelectorAll('.btn')[3].ontouchstart = () => { if(!collide(1)) piece.x++; drawBoard(); drawPiece(piece); };
-    document.querySelector('.drop').ontouchstart = () => { while(!collide(0,1)) piece.y++; lock(); drawBoard(); drawPiece(piece); };
-
-    // Автозаполнение имени
-    if(tg?.initDataUnsafe?.user) {
-        const u = tg.initDataUnsafe.user;
-        document.getElementById('name').value = u.username ? `@${u.username}` : u.first_name;
-    }
-
-    // Отправка рекорда
-    const send = async () => {
-        const name = (document.getElementById('name').value||"Аноним").trim().slice(0,18);
-        const text = `НОВЫЙ РЕКОРД ТЕТРИС\n\nИгрок: ${name}\nОчки: ${score}\nID: ${UID}`;
-
-        await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
-            method:"POST", headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({chat_id:UID, text, parse_mode:"Markdown"})
-        });
-
-        tg?.MainButton?.setText("Отправлено!");
-        setTimeout(()=>tg?.close?.(),1500);
-    };
-
-    if(tg) {
-        tg.MainButton.text = `Отправить ${score} очков`;
-        tg.MainButton.color = "#40b345";
-        tg.MainButton.show();
-        tg.MainButton.onClick(send);
-    }
-
-    drawBoard(); drawPiece(piece); drawNext();
-    setInterval(() => { if(document.getElementById('gameover').style.display!=='flex') drop(); }, 700/level);
+    function draw(){drawBoard();drawP(p);}
+    draw();drawNext();
+    setInterval(()=>{if(document.getElementById('go').style.display==='flex')return;drop();},750/level);
 </script>
 </body>
 </html>
