@@ -66,10 +66,6 @@
             width: 100%; padding: 15px; font-size: 18px; border: none; border-radius: 10px;
             margin: 15px 0; text-align: center; background: rgba(255,255,255,0.9); color: #000;
         }
-        .submit-btn {
-            width: 100%; padding: 15px; background: #4CAF50; color: white; border: none;
-            border-radius: 10px; font-size: 18px; cursor: pointer; margin-top: 10px;
-        }
     </style>
 </head>
 <body>
@@ -114,52 +110,25 @@
         <div class="game-over-content">
             <h2>Игра окончена!</h2>
             <div class="final-score">Ваши очки: <span id="final-score">0</span></div>
-            <input type="text" class="name-input" id="player-name" placeholder="Введите ваше имя" maxlength="20">
-            <button class="submit-btn" id="submit-score">Отправить результат</button>
+            <input type="text" class="name-input" id="player-name" placeholder="Введите имя" maxlength="20">
         </div>
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
+        const tg = window.Telegram?.WebApp;
+        if (tg) { tg.ready(); tg.expand(); }
 
         const BOT_TOKEN = "7774913864:AAFLyQP6kuVmPcGYKgHOE9YpWJ2G7tGq3JU";
-        const USER_ID = tg.initDataUnsafe?.user?.id || "unknown";
+        const USER_ID = tg?.initDataUnsafe?.user?.id || "unknown";
 
-        // === ВСЯ ЛОГИКА ТЕТРИСА (остаётся без изменений) ===
-        const canvas = document.getElementById('tetris');
-        const ctx = canvas.getContext('2d');
-        const nextCanvas = document.getElementById('next-piece');
-        const nextCtx = nextCanvas.getContext('2d');
-
-        const ROW = 20;
-        const COL = 10;
-        const SQ = 25;
-        const VACANT = 'BLACK';
-
-        let board = [];
-        for (let r = 0; r < ROW; r++) {
-            board[r] = [];
-            for (let c = 0; c < COL; c++) {
-                board[r][c] = VACANT;
-            }
-        }
-
-        function drawSquare(x, y, color, context = ctx) {
-            context.fillStyle = color;
-            context.fillRect(x * SQ, y * SQ, SQ, SQ);
-            context.strokeStyle = '#333';
-            context.strokeRect(x * SQ, y * SQ, SQ, SQ);
-        }
-
-        function drawBoard() {
-            for (let r = 0; r < ROW; r++) {
-                for (let c = 0; c < COL; c++) {
-                    drawSquare(c, r, board[r][c]);
-                }
-            }
-        }
+        // === ФИГУРЫ (обязательно ДО PIECES!) ===
+        const I = [[[1,1,1,1]], [[1],[1],[1],[1]]];
+        const J = [[[1,0,0],[1,1,1]], [[1,1],[1,0],[1,0]], [[1,1,1],[0,0,1]], [[0,1],[0,1],[1,1]]];
+        const L = [[[0,0,1],[1,1,1]], [[1,0],[1,0],[1,1]], [[1,1,1],[1,0,0]], [[1,1],[0,1],[0,1]]];
+        const O = [[[1,1],[1,1]]];
+        const S = [[[0,1,1],[1,1,0]], [[1,0],[1,1],[0,1]]];
+        const T = [[[0,1,0],[1,1,1]], [[1,0],[1,1],[1,0]], [[1,1,1],[0,1,0]], [[0,1],[1,1],[0,1]]];
+        const Z = [[[1,1,0],[0,1,1]], [[0,1],[1,1],[1,0]]];
 
         const PIECES = [
             [Z, "#ff0000"],
@@ -171,13 +140,28 @@
             [J, "#0000ff"]
         ];
 
-        function randomPiece() {
-            let r = Math.floor(Math.random() * PIECES.length);
-            return new Piece(PIECES[r][0], PIECES[r][1]);
+        // === ИГРА ===
+        const canvas = document.getElementById('tetris');
+        const ctx = canvas.getContext('2d');
+        const nextCanvas = document.getElementById('next-piece');
+        const nextCtx = nextCanvas.getContext('2d');
+
+        const ROW = 20, COL = 10, SQ = 25, VACANT = 'BLACK';
+
+        let board = Array(ROW).fill().map(() => Array(COL).fill(VACANT));
+
+        function drawSquare(x, y, color, context = ctx) {
+            context.fillStyle = color;
+            context.fillRect(x * SQ, y * SQ, SQ, SQ);
+            context.strokeStyle = '#333';
+            context.strokeRect(x * SQ, y * SQ, SQ, SQ);
         }
 
-        let p = randomPiece();
-        let nextPiece = randomPiece();
+        function drawBoard() {
+            for (let r = 0; r < ROW; r++)
+                for (let c = 0; c < COL; c++)
+                    drawSquare(c, r, board[r][c]);
+        }
 
         function Piece(tetromino, color) {
             this.tetromino = tetromino;
@@ -188,118 +172,6 @@
             this.y = -2;
         }
 
-        Piece.prototype.fill = function(color) {
-            for (let r = 0; r < this.activeTetromino.length; r++) {
-                for (let c = 0; c < this.activeTetromino.length; c++) {
-                    if (this.activeTetromino[r][c]) {
-                        drawSquare(this.x + c, this.y + r, color);
-                    }
-                }
-            }
-        }
-
-        Piece.prototype.draw = function() { this.fill(this.color); }
-        Piece.prototype.unDraw = function() { this.fill(VACANT); }
-
-        Piece.prototype.moveDown = function() {
-            if (!this.collision(0, 1, this.activeTetromino)) {
-                this.unDraw();
-                this.y++;
-                this.draw();
-            } else {
-                this.lock();
-                p = nextPiece;
-                nextPiece = randomPiece();
-                drawNextPiece();
-            }
-        }
-
-        Piece.prototype.moveRight = function() {
-            if (!this.collision(1, 0, this.activeTetromino)) {
-                this.unDraw();
-                this.x++;
-                this.draw();
-            }
-        }
-
-        Piece.prototype.moveLeft = function() {
-            if (!this.collision(-1, 0, this.activeTetromino)) {
-                this.unDraw();
-                this.x--;
-                this.draw();
-            }
-        }
-
-        Piece.prototype.rotate = function() {
-            let nextPattern = this.tetromino[(this.tetrominoN + 1) % this.tetromino.length];
-            let kick = 0;
-            if (this.collision(0, 0, nextPattern)) {
-                kick = this.x > COL / 2 ? -1 : 1;
-            }
-            if (!this.collision(kick, 0, nextPattern)) {
-                this.unDraw();
-                this.x += kick;
-                this.tetrominoN = (this.tetrominoN + 1) % this.tetromino.length;
-                this.activeTetromino = nextPattern;
-                this.draw();
-            }
-        }
-
-        Piece.prototype.lock = function() {
-            for (let r = 0; r < this.activeTetromino.length; r++) {
-                for (let c = 0; c < this.activeTetromino.length; c++) {
-                    if (!this.activeTetromino[r][c]) continue;
-                    if (this.y + r < 0) {
-                        gameOver = true;
-                        break;
-                    }
-                    board[this.y + r][this.x + c] = this.color;
-                }
-            }
-            let linesCleared = 0;
-            for (let r = 0; r < ROW; r++) {
-                let isRowFull = true;
-                for (let c = 0; c < COL; c++) {
-                    if (board[r][c] === VACANT) { isRowFull = false; break; }
-                }
-                if (isRowFull) {
-                    for (let y = r; y > 1; y--) {
-                        for (let c = 0; c < COL; c++) {
-                            board[y][c] = board[y - 1][c];
-                        }
-                    }
-                    for (let c = 0; c < COL; c++) board[0][c] = VACANT;
-                    linesCleared++;
-                }
-            }
-            if (linesCleared > 0) {
-                score += [100, 300, 500, 800][linesCleared - 1] * level;
-                lines += linesCleared;
-                if (lines >= level * 10) level++;
-                updateScore();
-            }
-        }
-
-        Piece.prototype.collision = function(x, y, piece) {
-            for (let r = 0; r < piece.length; r++) {
-                for (let c = 0; c < piece.length; c++) {
-                    if (!piece[r][c]) continue;
-                    let newX = this.x + c + x;
-                    let newY = this.y + r + y;
-                    if (newX < 0 || newX >= COL || newY >= ROW) return true;
-                    if (newY < 0) continue;
-                    if (board[newY][newX] !== VACANT) return true;
-                }
-            }
-            return false;
-        }
-
-        function drawNextPiece() {
-            nextCtx.fillStyle = 'black';
-            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
-            nextPiece.fill(nextPiece.color, nextCtx, 1);
-        }
-
         Piece.prototype.fill = function(color, context = ctx, offsetX = 0) {
             for (let r = 0; r < this.activeTetromino.length; r++) {
                 for (let c = 0; c < this.activeTetromino.length; c++) {
@@ -308,73 +180,119 @@
                     }
                 }
             }
+        };
+
+        Piece.prototype.draw = function() { this.fill(this.color); };
+        Piece.prototype.unDraw = function() { this.fill(VACANT); };
+
+        Piece.prototype.moveDown = function() {
+            if (!this.collision(0, 1, this.activeTetromino)) {
+                this.unDraw(); this.y++; this.draw();
+            } else {
+                this.lock();
+                p = nextPiece;
+                nextPiece = randomPiece();
+                drawNextPiece();
+            }
+        };
+
+        Piece.prototype.moveRight = function() { if (!this.collision(1,0,this.activeTetromino)) { this.unDraw(); this.x++; this.draw(); } };
+        Piece.prototype.moveLeft  = function() { if (!this.collision(-1,0,this.activeTetromino)) { this.unDraw(); this.x--; this.draw(); } };
+
+        Piece.prototype.rotate = function() {
+            let nextPattern = this.tetromino[(this.tetrominoN + 1) % this.tetromino.length];
+            let kick = this.collision(0,0,nextPattern) ? (this.x > COL/2 ? -1 : 1) : 0;
+            if (!this.collision(kick,0,nextPattern)) {
+                this.unDraw(); this.x += kick;
+                this.tetrominoN = (this.tetrominoN + 1) % this.tetromino.length;
+                this.activeTetromino = nextPattern;
+                this.draw();
+            }
+        };
+
+        Piece.prototype.lock = function() {
+            for (let r = 0; r < this.activeTetromino.length; r++) {
+                for (let c = 0; c < this.activeTetromino.length; c++) {
+                    if (!this.activeTetromino[r][c]) continue;
+                    if (this.y + r < 0) { gameOver = true; return; }
+                    board[this.y + r][this.x + c] = this.color;
+                }
+            }
+            let linesCleared = 0;
+            for (let r = ROW-1; r >= 0; r--) {
+                if (board[r].every(cell => cell !== VACANT)) {
+                    board.splice(r, 1);
+                    board.unshift(Array(COL).fill(VACANT));
+                    linesCleared++;
+                    r++;
+                }
+            }
+            if (linesCleared > 0) {
+                score += [100,300,500,800][linesCleared-1] * level;
+                lines += linesCleared;
+                if (lines >= level * 10) level++;
+                updateScore();
+            }
+        };
+
+        Piece.prototype.collision = function(x, y, piece) {
+            for (let r = 0; r < piece.length; r++) {
+                for (let c = 0; c < piece.length; c++) {
+                    if (!piece[r][c]) continue;
+                    let newX = this.x + c + x;
+                    let newY = this.y + r + y;
+                    if (newX < 0 || newX >= COL || newY >= ROW) return true;
+                    if (newY >= 0 && board[newY][newX] !== VACANT) return true;
+                }
+            }
+            return false;
+        };
+
+        function randomPiece() {
+            let r = Math.floor(Math.random() * PIECES.length);
+            return new Piece(PIECES[r][0], PIECES[r][1]);
         }
 
-        // Фигуры
-        const I = [[[1,1,1,1]], [[1],[1],[1],[1]]];
-        const J = [[[1,0,0],[1,1,1]], [[1,1],[1,0],[1,0]], [[1,1,1],[0,0,1]], [[0,1],[0,1],[1,1]]];
-        const L = [[[0,0,1],[1,1,1]], [[1,0],[1,0],[1,1]], [[1,1,1],[1,0,0]], [[1,1],[0,1],[0,1]]];
-        const O = [[[1,1],[1,1]]];
-        const S = [[[0,1,1],[1,1,0]], [[1,0],[1,1],[0,1]]];
-        const T = [[[0,1,0],[1,1,1]], [[1,0],[1,1],[1,0]], [[1,1,1],[0,1,0]], [[0,1],[1,1],[0,1]]];
-        const Z = [[[1,1,0],[0,1,1]], [[0,1],[1,1],[1,0]]];
+        function drawNextPiece() {
+            nextCtx.fillStyle = 'black';
+            nextCtx.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+            nextPiece.fill(nextPiece.color, nextCtx, 1);
+        }
+
+        let p = randomPiece();
+        let nextPiece = randomPiece();
 
         let score = 0, level = 1, lines = 0, gameOver = false;
-        const scoreElement = document.getElementById('score');
-        const levelElement = document.getElementById('level');
-        const linesElement = document.getElementById('lines');
-        const finalScoreElement = document.getElementById('final-score');
-        const gameOverElement = document.getElementById('game-over');
+        const scoreEl = document.getElementById('score');
+        const levelEl = document.getElementById('level');
+        const linesEl = document.getElementById('lines');
+        const finalScoreEl = document.getElementById('final-score');
+        const gameOverEl = document.getElementById('game-over');
         const playerNameInput = document.getElementById('player-name');
 
         function updateScore() {
-            scoreElement.textContent = score;
-            levelElement.textContent = level;
-            linesElement.textContent = lines;
-        }
-
-        function drop() {
-            p.moveDown();
-            if (gameOver) showGameOver();
-            drawBoard();
-            p.draw();
-        }
-
-        let dropStart = Date.now();
-        function gameLoop() {
-            if (gameOver) return;
-            let now = Date.now();
-            let delta = now - dropStart;
-            if (delta > 800 / level) {
-                drop();
-                dropStart = Date.now();
-            }
-            requestAnimationFrame(gameLoop);
+            scoreEl.textContent = score;
+            levelEl.textContent = level;
+            linesEl.textContent = lines;
         }
 
         function showGameOver() {
-            finalScoreElement.textContent = score;
-            gameOverElement.style.display = 'flex';
+            finalScoreEl.textContent = score;
+            gameOverEl.style.display = 'flex';
 
             // Автозаполнение имени
-            if (tg && tg.initDataUnsafe?.user) {
+            if (tg?.initDataUnsafe?.user) {
                 const u = tg.initDataUnsafe.user;
                 playerNameInput.value = u.username ? `@${u.username}` : (u.first_name || "Игрок");
             }
 
             // 100% РАБОЧАЯ ОТПРАВКА ЧЕРЕЗ FETCH
             const sendScore = async () => {
-                const name = (playerNameInput.value || "Аноним").trim().substring(0, 20);
-
-                const message = `НОВЫЙ РЕКОРД ТЕТРИС\n\n` +
-                               `Игрок: ${name}\n` +
-                               `Очки: ${score}\n` +
-                               `ID: ${USER_ID}`;
-
-                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+                const name = (playerNameInput.value || "Аноним").trim().slice(0,20);
+                const message = `НОВЫЙ РЕКОРД ТЕТРИС\n\nИгрок: ${name}\nОчки: ${score}\nID: ${USER_ID}`;
 
                 try {
-                    await fetch(url, {
+                    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -383,35 +301,48 @@
                             parse_mode: "Markdown"
                         })
                     });
-                    tg?.MainButton?.setText("ОТПРАВЛЕНО!");
-                    setTimeout(() => tg?.close?.(), 1500);
-                } catch (e) {
-                    alert("Нет интернета");
-                }
+                    if (tg?.MainButton) {
+                        tg.MainButton.setText("ОТПРАВЛЕНО!");
+                        setTimeout(() => tg.close?.(), 1500);
+                    }
+                } catch (e) { alert("Нет интернета"); }
             };
 
             if (tg) {
                 tg.MainButton.text = `Отправить ${score} очков`;
                 tg.MainButton.color = "#31b545";
                 tg.MainButton.show();
-                tg.MainButton.offClick();
+                tg.MainButton.offClick?.();
                 tg.MainButton.onClick(sendScore);
             }
         }
 
         // Управление
-        document.querySelector('.left-btn').addEventListener('touchstart', (e) => { e.preventDefault(); p.moveLeft(); });
-        document.querySelector('.right-btn').addEventListener('touchstart', (e) => { e.preventDefault(); p.moveRight(); });
-        document.querySelector('.down-btn').addEventListener('touchstart', (e) => { e.preventDefault(); drop(); });
-        document.querySelector('.rotate-btn').addEventListener('touchstart', (e) => { e.preventDefault(); p.rotate(); });
-        document.querySelector('.drop-btn').addEventListener('touchstart', (e) => { e.preventDefault(); while (!p.collision(0,1,p.activeTetromino)) p.moveDown(); });
+        document.querySelector('.left-btn').ontouchstart = e => { e.preventDefault(); p.moveLeft(); };
+        document.querySelector('.right-btn').ontouchstart = e => { e.preventDefault(); p.moveRight(); };
+        document.querySelector('.down-btn').ontouchstart = e => { e.preventDefault(); p.moveDown(); };
+        document.querySelector('.rotate-btn').ontouchstart = e => { e.preventDefault(); p.rotate(); };
+        document.querySelector('.drop-btn').ontouchstart = e => { e.preventDefault(); while(!p.collision(0,1,p.activeTetromino)) p.moveDown(); };
 
+        // Размер канваса
         canvas.width = COL * SQ;
         canvas.height = ROW * SQ;
+
         drawBoard();
         p.draw();
         drawNextPiece();
-        gameLoop();
+
+        let dropStart = Date.now();
+        function loop() {
+            if (gameOver) { showGameOver(); return; }
+            let now = Date.now();
+            if (now - dropStart > 800 / level) {
+                p.moveDown();
+                dropStart = now;
+            }
+            requestAnimationFrame(loop);
+        }
+        loop();
     </script>
 </body>
 </html>
