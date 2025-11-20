@@ -58,82 +58,176 @@
 
 <script>
     const tg = window.Telegram?.WebApp;
-    if(tg){tg.ready();tg.expand();}
+    if (tg) { tg.ready(); tg.expand(); }
     const TOKEN = "7774913864:AAFLyQP6kuVmPcGYKgHOE9YpWJ2G7tGq3JU";
     const UID = tg?.initDataUnsafe?.user?.id || "unknown";
 
-    const W=10,H=20,S=26;
-    const c=document.getElementById('tetris'); const ctx=c.getContext('2d');
-    c.width=W*S; c.height=H*S;
-    const nc=document.getElementById('next'); const nctx=nc.getContext('2d');
-    nc.width=nc.height=76;
+    const W = 10, H = 20, S = 26;
+    const c = document.getElementById('tetris'); 
+    const ctx = c.getContext('2d');
+    c.width = W * S; 
+    c.height = H * S;
+    
+    const nc = document.getElementById('next'); 
+    const nctx = nc.getContext('2d');
+    nc.width = nc.height = 76;
 
-    const COLORS=["#00ffff","#ffff00","#aa00ff","#00ff00","#ff0000","#0000ff","#ffaa00"];
-    const SHAPES=[[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]]];
+    const COLORS = ["#00ffff","#ffff00","#aa00ff","#00ff00","#ff0000","#0000ff","#ffaa00"];
+    const SHAPES = [[[1,1,1,1]],[[1,1],[1,1]],[[0,1,0],[1,1,1]],[[0,1,1],[1,1,0]],[[1,1,0],[0,1,1]],[[1,0,0],[1,1,1]],[[0,0,1],[1,1,1]]];
 
-    let board=Array.from({length:H},()=>Array(W).fill(0));
-    let p, np, score=0, lines=0, level=1;
+    let board = Array.from({length:H}, () => Array(W).fill(0));
+    let p, np, score = 0, lines = 0, level = 1;
 
-    function npiece(){const i=Math.floor(Math.random()*SHAPES.length);return{x:4,y:0,s:SHAPES[i],c:COLORS[i]};}
-    p=npiece(); np=npiece();
+    function npiece() {
+        const i = Math.floor(Math.random() * SHAPES.length);
+        return {x:4, y:0, s:SHAPES[i], c:COLORS[i]};
+    }
+    p = npiece(); 
+    np = npiece();
 
-    function drawBoard(){
-        ctx.fillStyle="#000";ctx.fillRect(0,0,c.width,c.height);
-        for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(board[y][x]){
-            ctx.fillStyle=board[y][x];
-            ctx.fillRect(x*S,y*S,S,S);
-            ctx.strokeStyle="#222";ctx.strokeRect(x*S,y*S,S,S);
+    function drawBoard() {
+        ctx.fillStyle = "#000"; 
+        ctx.fillRect(0, 0, c.width, c.height);
+        for (let y = 0; y < H; y++) 
+            for (let x = 0; x < W; x++) 
+                if (board[y][x]) {
+                    ctx.fillStyle = board[y][x];
+                    ctx.fillRect(x * S, y * S, S, S);
+                    ctx.strokeStyle = "#222"; 
+                    ctx.strokeRect(x * S, y * S, S, S);
+                }
+    }
+
+    function drawP(p) {
+        p.s.forEach((r, y) => r.forEach((v, x) => {
+            if (v) {
+                ctx.fillStyle = p.c;
+                ctx.fillRect((p.x + x) * S, (p.y + y) * S, S, S);
+                ctx.strokeStyle = "#222"; 
+                ctx.strokeRect((p.x + x) * S, (p.y + y) * S, S, S);
+            }
+        }));
+    }
+
+    function drawNext() {
+        nctx.fillStyle = "#000"; 
+        nctx.fillRect(0, 0, 76, 76);
+        np.s.forEach((r, y) => r.forEach((v, x) => {
+            if (v) {
+                nctx.fillStyle = np.c;
+                nctx.fillRect(x * 19 + 10, y * 19 + 10, 18, 18);
+            }
+        }));
+    }
+
+    function collide(dx = 0, dy = 0) {
+        return p.s.some((r, y) => r.some((v, x) => v && (
+            p.x + x + dx < 0 || p.x + x + dx >= W || p.y + y + dy >= H || board[p.y + y + dy][p.x + x + dx]
+        )));
+    }
+
+    function lock() {
+        p.s.forEach((r, y) => r.forEach((v, x) => {
+            if (v && p.y + y >= 0) board[p.y + y][p.x + x] = p.c;
+        }));
+        let cl = 0;
+        for (let y = H - 1; y >= 0; y--) 
+            if (board[y].every(v => v)) {
+                board.splice(y, 1); 
+                board.unshift(Array(W).fill(0)); 
+                cl++; 
+            }
+        if (cl) {
+            score += [100, 300, 500, 800][cl - 1] * level; 
+            lines += cl; 
+            if (lines >= level * 10) level++;
         }
+        document.getElementById('score').textContent = score;
+        document.getElementById('lines').textContent = lines;
+        document.getElementById('level').textContent = level;
+        p = np; 
+        np = npiece(); 
+        drawNext();
+        if (collide()) end();
     }
-    function drawP(p){
-        p.s.forEach((r,y)=>r.forEach((v,x)=>{if(v){
-            ctx.fillStyle=p.c;
-            ctx.fillRect((p.x+x)*S,(p.y+y)*S,S,S);
-            ctx.strokeStyle="#222";ctx.strokeRect((p.x+x)*S,(p.y+y)*S,S,S);  // ← ИСПРАВИЛ ЗДЕСЬ
-        }}));
+
+    function drop() {
+        if (!collide(0, 1)) p.y++; 
+        else lock(); 
+        draw();
     }
-    function drawNext(){
-        nctx.fillStyle="#000";nctx.fillRect(0,0,76,76);
-        np.s.forEach((r,y)=>r.forEach((v,x)=>v&&nctx.fillStyle=np.c,nctx.fillRect(x*19+10,y*19+10,18,18)));
+
+    function hard() {
+        while (!collide(0, 1)) p.y++; 
+        lock(); 
+        draw();
     }
-    function collide(dx=0,dy=0){return p.s.some((r,y)=>r.some((v,x)=>v&&(p.x+x+dx<0||p.x+x+dx>=W||p.y+y+dy>=H||board[p.y+y+dy][p.x+x+dx])));}
-    function lock(){
-        p.s.forEach((r,y)=>r.forEach((v,x)=>v&&p.y+y>=0&&(board[p.y+y][p.x+x]=p.c)));
-        let cl=0;
-        for(let y=H-1;y>=0;y--)if(board[y].every(v=>v)){board.splice(y,1);board.unshift(Array(W).fill(0));cl++;}
-        if(cl){score+=[100,300,500,800][cl-1]*level;lines+=cl;if(lines>=level*10)level++;}
-        document.getElementById('score').textContent=score;
-        document.getElementById('lines').textContent=lines;
-        document.getElementById('level').textContent=level;
-        p=np;np=npiece();drawNext();
-        if(collide())end();
-    }
-    function drop(){if(!collide(0,1))p.y++;else lock();draw();}
-    function hard(){while(!collide(0,1))p.y++;lock();draw();}
-    function end(){
-        document.getElementById('final').textContent=score;
-        document.getElementById('go').style.display='flex';
-        if(tg?.initDataUnsafe?.user){
-            const u=tg.initDataUnsafe.user;
-            document.getElementById('name').value=u.username?`@${u.username}`:u.first_name;
+
+    function end() {
+        document.getElementById('final').textContent = score;
+        document.getElementById('go').style.display = 'flex';
+        if (tg?.initDataUnsafe?.user) {
+            const u = tg.initDataUnsafe.user;
+            document.getElementById('name').value = u.username ? `@${u.username}` : u.first_name;
         }
-        const send=async()=>{const n=(document.getElementById('name').value||"Аноним").trim().slice(0,18);
-            await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},
-                body:JSON.stringify({chat_id:UID,text:`НОВЫЙ РЕКОРД ТЕТРИС\n\nИгрок: ${n}\nОчки: ${score}\nID: ${UID}`,parse_mode:"Markdown"})});
-            tg?.MainButton?.setText("Отправлено!");setTimeout(()=>tg?.close?.(),1500);
+        const send = async () => {
+            const n = (document.getElementById('name').value || "Аноним").trim().slice(0, 18);
+            const text = `НОВЫЙ РЕКОРД ТЕТРИС\n\nИгрок: ${n}\nОчки: ${score}\nID: ${UID}`;
+            await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+                method: "POST", 
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({chat_id: UID, text: text, parse_mode: "Markdown"})
+            });
+            if (tg?.MainButton) {
+                tg.MainButton.setText("Отправлено!"); 
+                setTimeout(() => tg.close?.(), 1500);
+            }
         };
-        if(tg){tg.MainButton.text=`Отправить ${score} очков`;tg.MainButton.color="#40b345";tg.MainButton.show();tg.MainButton.onClick(send);}
+        if (tg) {
+            tg.MainButton.text = `Отправить ${score} очков`;
+            tg.MainButton.color = "#40b345";
+            tg.MainButton.show();
+            tg.MainButton.onClick(send);
+        }
     }
 
-    document.querySelectorAll('.btn')[0].ontouchstart=e=>{e.preventDefault();const s=p.s;p.s=s[0].map((_,i)=>s.map(r=>r[i]).reverse());if(collide())p.s=s;draw();}
-    document.querySelectorAll('.btn')[1].ontouchstart=e=>{e.preventDefault();if(!collide(-1))p.x--;draw();}
-    document.querySelectorAll('.btn')[2].ontouchstart=e=>{e.preventDefault();drop();}
-    document.querySelectorAll('.btn')[3].ontouchstart=e=>{e.preventDefault();if(!collide(1))p.x++;draw();}
-    document.querySelector('.drop').ontouchstart=e=>{e.preventDefault();hard();}
+    document.querySelectorAll('.btn')[0].ontouchstart = e => {
+        e.preventDefault();
+        const s = p.s;
+        p.s = s[0].map((_, i) => s.map(r => r[i]).reverse());
+        if (collide()) p.s = s;
+        draw();
+    };
+    document.querySelectorAll('.btn')[1].ontouchstart = e => {
+        e.preventDefault();
+        if (!collide(-1, 0)) p.x--; 
+        draw();
+    };
+    document.querySelectorAll('.btn')[2].ontouchstart = e => {
+        e.preventDefault(); 
+        drop();
+    };
+    document.querySelectorAll('.btn')[3].ontouchstart = e => {
+        e.preventDefault();
+        if (!collide(1, 0)) p.x++; 
+        draw();
+    };
+    document.querySelector('.drop').ontouchstart = e => {
+        e.preventDefault(); 
+        hard();
+    };
 
-    function draw(){drawBoard();drawP(p);}
-    draw();drawNext();
-    setInterval(()=>{if(document.getElementById('go').style.display==='flex')return;drop();},750/level);
+    function draw() {
+        drawBoard(); 
+        drawP(p);
+    }
+
+    draw(); 
+    drawNext();
+    setInterval(() => {
+        if (document.getElementById('go').style.display === 'flex') return;
+        drop();
+    }, 750 / level);
 </script>
 </body>
 </html>
