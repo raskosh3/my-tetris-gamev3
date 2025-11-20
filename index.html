@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <meta name="telegram:webapp" content="true">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Тетрис для смартфона</title>
@@ -393,11 +394,11 @@
             console.log("WebApp ready:", tg.isReady);
             
             // Расширяем на весь экран
-            tg.expand();
+       
             
             // Ждем полной инициализации WebApp
             tg.ready();
-            
+            tg.expand();
             // Помечаем как готовый после инициализации
             setTimeout(() => {
                 tgReady = true;
@@ -782,69 +783,59 @@
             requestAnimationFrame(update);
         }
 
-        // ОБНОВЛЕННАЯ ФУНКЦИЯ ОТПРАВКИ РЕЗУЛЬТАТА
-        async function submitScoreToTelegram(playerName, score) {
-    try {
-        console.log("Попытка отправки результата:", { 
-            playerName, 
-            score, 
-            isTelegramWebApp,
-            tg: !!tg,
-            tgVersion: tg?.version
-        });
+       // НОВАЯ НАДЁЖНАЯ ОТПРАВКА (ВСТАВЬ ВМЕСТО СТАРОЙ submitScoreToTelegram)
+async function submitScoreToTelegram(playerName, score) {
+    if (!window.Telegram?.WebApp) {
+        showCopySection(playerName, score);
+        return;
+    }
+
+    const tg = window.Telegram.WebApp;
+
+    // Обязательно расширяем
+    tg.expand();
+
+    // ГОВОРИМ ТЕЛЕГРАМУ, ЧТО МЫ ГОТОВЫ (это важно!)
+    tg.ready();
+
+    const data = {
+        action: 'save_score',
+        name: playerName,
+        score: score,
+        user_id: tg.initDataUnsafe?.user?.id || null,
+        username: tg.initDataUnsafe?.user?.username || null,
+        timestamp: new Date().toISOString()
+    };
+
+    // САМЫЙ ГЛАВНЫЙ ТРЮК — ждём, пока Telegram реально будет готов
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    const trySend();
+
+    function trySend() {
+        attempts++;
         
-        if (isTelegramWebApp && tg) {
-            const data = {
-                action: 'save_score',
-                name: playerName,
-                score: score,
-                timestamp: new Date().toISOString(),
-                user_id: tg.initDataUnsafe?.user?.id || 'unknown',
-                platform: 'telegram_webapp'
-            };
-            
-            console.log("Отправка данных в Telegram:", data);
-            
-            // ВСЕГДА пробуем отправить, игнорируя isReady
+        if (tg.isVersionAtLeast?.("6.0") && tg.sendData) {  // проверка версии
             try {
-                // Гарантированно вызываем ready()
-                tg.ready();
+                tg.sendData(JSON.stringify(data));
+                console.log("✅ sendData отправлен на попытке", attempts);
                 
-                // Небольшая задержка для гарантии
-                setTimeout(() => {
-                    try {
-                        tg.sendData(JSON.stringify(data));
-                        console.log("✅ Данные отправлены через sendData");
-                        
-                        // Показываем сообщение об успехе
-                        alert(`✅ Результат отправлен!\n${playerName}: ${score} очков\n\nПриложение закроется через 3 секунды...`);
-                        
-                        // Закрываем WebApp через 3 секунды
-                        setTimeout(() => {
-                            if (tg && tg.close) {
-                                tg.close();
-                            }
-                        }, 3000);
-                        
-                    } catch (sendError) {
-                        console.error("❌ Ошибка отправки через sendData:", sendError);
-                        showCopySection(playerName, score);
-                    }
-                }, 100);
+                alert(`🎉 Рекорд отправлен!\n${playerName}: ${score} очков`);
                 
-            } catch (error) {
-                console.error("❌ Общая ошибка отправки:", error);
-                showCopySection(playerName, score);
+                setTimeout(() => tg.close?.(), 2000);
+                return;
+            } catch (err) {
+                console.warn("sendData ошибка, пробуем ещё", err);
             }
-            
+        }
+
+        if (attempts < maxAttempts) {
+            setTimeout(trySend, 300);  // ждём 300мс и пробуем снова
         } else {
-            // Если не в Telegram, показываем секцию для копирования
+            console.error("Не удалось отправить через sendData");
             showCopySection(playerName, score);
         }
-        
-    }  catch (error) {
-        console.error('Общая ошибка:', error);
-        showCopySection(playerName, score);
     }
 }
 
@@ -1001,6 +992,7 @@ function showCopySection(playerName, score) {
     </script>
 </body>
 </html>
+
 
 
 
