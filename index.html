@@ -1073,20 +1073,25 @@ function showCopySection(playerName, score) {
         }
 
         // Запуск игры при загрузке
-        window.addEventListener('load', () => {
-    // Инициализируем Telegram WebApp
-    initTelegramWebApp();
-    
-    // Дополнительная проверка готовности через 2 секунды
-    setTimeout(() => {
-        if (isTelegramWebApp && tg) {
-            console.log("🕒 Проверка готовности WebApp:", {
-                isReady: tg.isReady,
-                platform: tg.platform,
-                version: tg.version
-            });
-        }
-    }, 2000);
+       window.addEventListener('load', () => {
+    // Инициализация Telegram WebApp
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    // Показываем тестовую кнопку сразу
+    tg.MainButton.text = "ОТПРАВИТЬ ТЕСТ";
+    tg.MainButton.color = "#ff0000";
+    tg.MainButton.show();
+
+    tg.MainButton.onClick(() => {
+        tg.sendData("test123");
+        tg.MainButton.setText("ОТПРАВЛЕНО!");
+        tg.MainButton.disable();
+    });
+
+    console.log("Тестовая кнопка готова");
+});
     
     // Настраиваем размер и запускаем игру
     setupCanvasSize();
@@ -1098,6 +1103,7 @@ function showCopySection(playerName, score) {
     </script>
 </body>
 </html>
+
 
 
 
