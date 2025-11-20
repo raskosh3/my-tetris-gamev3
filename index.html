@@ -1,440 +1,69 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta name="telegram:webapp" content="true">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Тетрис для смартфона</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ТЕСТ СВЯЗИ WEBAPP → БОТ</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* Стили остаются без изменений из предыдущей версии */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            touch-action: manipulation;
-        }
-        
         body {
             font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 10px;
-        }
-        
-        .game-container {
-            width: 100%;
-            max-width: 500px;
-            padding: 10px;
-        }
-        
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
+            background: #000;
             color: white;
-        }
-        
-        .score-board {
-            display: flex;
-            gap: 15px;
-        }
-        
-        .score-item {
             text-align: center;
+            padding: 50px 20px;
+            margin: 0;
         }
-        
-        .score-value {
-            font-size: 18px;
-            font-weight: bold;
-            background: rgba(255,255,255,0.2);
-            padding: 5px 10px;
-            border-radius: 10px;
-            margin-top: 5px;
-        }
-        
-        .game-area {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        canvas {
-            background: #111;
-            border: 3px solid #333;
-            border-radius: 10px;
-        }
-        
-        #tetris {
-            flex: 1;
-        }
-        
-        .side-panel {
-            width: 100px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .next-piece {
-            background: rgba(0,0,0,0.3);
-            border-radius: 10px;
-            padding: 10px;
-            text-align: center;
-            color: white;
-        }
-        
-        #next-piece {
-            background: #111;
-            border: 2px solid #333;
-            border-radius: 5px;
-            margin-top: 5px;
-        }
-        
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 8px;
-            margin-top: 10px;
-            padding: 0 10px;
-        }
-        
-        .control-btn {
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 15px;
-            color: white;
-            font-size: 24px;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            user-select: none;
-            transition: all 0.1s;
-        }
-        
-        .control-btn:active {
-            background: rgba(255,255,255,0.4);
-            transform: scale(0.95);
-        }
-        
-        .rotate-btn {
-            grid-column: 2;
-            grid-row: 1;
-        }
-        
-        .left-btn {
-            grid-column: 1;
-            grid-row: 2;
-        }
-        
-        .down-btn {
-            grid-column: 2;
-            grid-row: 2;
-        }
-        
-        .right-btn {
-            grid-column: 3;
-            grid-row: 2;
-        }
-        
-        .drop-btn {
-            grid-column: 1 / span 3;
-            grid-row: 3;
-            background: rgba(255, 100, 100, 0.3);
-            font-size: 16px;
-        }
-        
-        .game-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            padding: 0 10px;
-        }
-        
-        .action-btn {
-            flex: 1;
-            padding: 12px;
-            background: rgba(255,255,255,0.2);
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 10px;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.2s;
-        }
-        
-        .action-btn:active {
-            background: rgba(255,255,255,0.4);
-        }
-        
-        .game-over {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
+        h1 { font-size: 28px; margin-bottom: 30px; }
+        .info { font-size: 18px; margin: 20px 0; background: #333; padding: 15px; border-radius: 10px; }
+        .btn {
+            margin-top: 50px;
             padding: 20px;
-        }
-        
-        .game-over-content {
-            background: rgba(255,255,255,0.1);
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            width: 100%;
-            max-width: 400px;
-        }
-        
-        .game-over h2 {
-            font-size: 28px;
-            margin-bottom: 20px;
-        }
-        
-        .final-score {
+            background: #ff3b30;
+            color: white;
             font-size: 24px;
-            margin-bottom: 20px;
-        }
-        
-        .name-input {
-            width: 100%;
-            padding: 15px;
-            font-size: 18px;
-            border: none;
-            border-radius: 10px;
-            margin: 15px 0;
-            text-align: center;
-            background: rgba(255,255,255,0.9);
-        }
-        
-        .submit-btn {
-            width: 100%;
-            padding: 15px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        
-        .submit-btn:active {
-            background: #45a049;
-        }
-
-        .telegram-info {
-            background: rgba(255,255,255,0.1);
-            padding: 8px 12px;
-            border-radius: 10px;
-            margin: 5px 0 10px 0;
-            text-align: center;
-            font-size: 12px;
-            color: #90EE90;
-        }
-
-        .copy-section {
-            background: rgba(255,255,255,0.1);
-            padding: 10px;
-            border-radius: 10px;
-            margin-top: 10px;
-            display: none;
-        }
-
-        .copy-text {
-            background: rgba(255,255,255,0.9);
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            margin: 10px 0;
-            word-break: break-all;
-        }
-
-        .copy-btn {
-            background: #2196F3;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 100%;
-        }
-
-        @media (max-width: 400px) {
-            .controls {
-                gap: 5px;
-            }
-            
-            .control-btn {
-                height: 50px;
-                font-size: 20px;
-            }
-            
-            .side-panel {
-                width: 80px;
-            }
-            
-            .drop-btn {
-                font-size: 14px;
-            }
-        }
-        
-        /* Предотвращение выделения текста при касании */
-        .no-select {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -khtml-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
+            border-radius: 15px;
+            display: inline-block;
         }
     </style>
 </head>
-<body class="no-select">
-    <div class="game-container">
-        <!-- Добавляем информацию о Telegram -->
-        <div class="telegram-info" id="telegram-info" style="display: none;">
-            ✅ Запущено в Telegram • Результаты будут сохранены
-        </div>
-
-        <div class="header">
-            <h1 style="font-size: 24px;">ТЕТРИС</h1>
-            <div class="score-board">
-                <div class="score-item">
-                    <div>СЧЕТ</div>
-                    <div class="score-value" id="score">0</div>
-                </div>
-                <div class="score-item">
-                    <div>УРОВЕНЬ</div>
-                    <div class="score-value" id="level">1</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="game-area">
-            <canvas id="tetris" width="300" height="600"></canvas>
-            <div class="side-panel">
-                <div class="next-piece">
-                    <div>СЛЕДУЮЩАЯ</div>
-                    <canvas id="next-piece" width="80" height="80"></canvas>
-                </div>
-            </div>
-        </div>
-        
-        <div class="controls">
-            <div class="control-btn rotate-btn" id="rotate-btn">↻</div>
-            <div class="control-btn left-btn" id="left-btn">←</div>
-            <div class="control-btn down-btn" id="down-btn">↓</div>
-            <div class="control-btn right-btn" id="right-btn">→</div>
-            <div class="control-btn drop-btn" id="drop-btn">БЫСТРО ВНИЗ</div>
-        </div>
-        
-        <div class="game-buttons">
-            <div class="action-btn" id="pause-btn">ПАУЗА</div>
-            <div class="action-btn" id="restart-btn">ЗАНОВО</div>
-        </div>
-
-        <!-- Секция для копирования результата -->
-        <div class="copy-section" id="copy-section">
-            <div style="color: white; text-align: center; margin-bottom: 10px;">
-                📋 Если результат не отправился автоматически:
-            </div>
-            <div class="copy-text" id="result-text"></div>
-            <button class="copy-btn" id="copy-btn">📋 Скопировать результат</button>
-            <div style="color: #ccc; font-size: 12px; text-align: center; margin-top: 10px;">
-                Отправьте скопированный текст боту в чат
-            </div>
-        </div>
-    </div>
-    
-    <div class="game-over" id="game-over">
-        <div class="game-over-content">
-            <h2>ИГРА ОКОНЧЕНА!</h2>
-            <div class="final-score">Ваш счет: <span id="final-score">0</span></div>
-            
-            <div id="name-input-section">
-                <input type="text" id="player-name" class="name-input" placeholder="Введите ваше имя" maxlength="20">
-                <button class="submit-btn" id="submit-score">📤 Отправить результат в рекорды</button>
-                <div id="telegram-status" style="margin-top: 10px; font-size: 14px; color: #ccc;"></div>
-            </div>
-            
-            <div style="margin-top: 15px;">
-                <div class="action-btn" id="play-again-btn">🔄 Играть снова</div>
-            </div>
-        </div>
+<body>
+    <h1>ТЕСТ СВЯЗИ</h1>
+    <div class="info">
+        Если видишь эту страницу — WebApp открылся<br><br>
+        Нажми красную кнопку ниже<br>
+        Если в логах бота появится "test123" — ВСЁ РАБОТАЕТ
     </div>
 
     <script>
-        // ===== ТЕЛЕГРАМ ИНИЦИАЛИЗАЦИЯ =====
-       function initTelegramWebApp() {
-    try {
-        // Проверяем наличие Telegram WebApp API
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            isTelegramWebApp = true;
+        // Ждём полной загрузки Telegram WebApp
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+
+        // Сразу показываем кнопку
+        const tg = window.Telegram.WebApp;
+
+        tg.MainButton.text = "ОТПРАВИТЬ ТЕСТ В БОТ";
+        tg.MainButton.color = "#ff3b30";
+        tg.MainButton.textColor = "#ffffff";
+        tg.MainButton.show();
+
+        tg.MainButton.onClick(() => {
+            // Отправляем простую строку
+            tg.sendData("test123");
             
-            console.log("✅ Запущено в Telegram WebApp");
-            console.log("User:", tg.initDataUnsafe?.user);
-            console.log("WebApp ready:", tg.isReady);
-           
+            // Меняем кнопку
+            tg.MainButton.setText("ОТПРАВЛЕНО! ЖДИ ЛОГИ");
+            tg.MainButton.disable();
+            
+            // Дополнительно пишем в консоль (F12 → Console)
+            console.log("sendData отправлен: test123");
+        });
 
-        // Запуск игры при загрузке
-       window.addEventListener('load', () => {
-    // Инициализация Telegram WebApp
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
-
-    // Показываем тестовую кнопку сразу
-    tg.MainButton.text = "ОТПРАВИТЬ ТЕСТ";
-    tg.MainButton.color = "#ff0000";
-    tg.MainButton.show();
-
-    tg.MainButton.onClick(() => {
-        tg.sendData("test123");
-        tg.MainButton.setText("ОТПРАВЛЕНО!");
-        tg.MainButton.disable();
-    });
-
-    console.log("Тестовая кнопка готова");
-});
-    
-
-        // Адаптация к изменению размера экрана
-        window.addEventListener('resize', setupCanvasSize);
+        // Выводим инфу в консоль для проверки
+        console.log("WebApp запущен");
+        console.log("User:", tg.initDataUnsafe.user);
+        console.log("Version:", tg.version);
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
